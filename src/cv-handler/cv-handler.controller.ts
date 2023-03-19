@@ -7,9 +7,9 @@ export class CvHandlerController {
   constructor(private readonly cvHandlerService: CvHandlerService) {}
 
   @Post()
-  async uploadCV(@Body() input: CVInputDTO) {
+  async handleCVMatching(@Body() input: CVInputDTO) {
     try {
-      return await this.cvHandlerService.handleUploadCV(input);
+      return await this.cvHandlerService.handleCVMatching(input);
     } catch (error) {
       return error;
     }
