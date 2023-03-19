@@ -6,8 +6,12 @@ import { CVInputDTO } from './dtos/body-input.input';
 export class CvHandlerController {
   constructor(private readonly cvHandlerService: CvHandlerService) {}
 
-  @Post('')
+  @Post()
   async uploadCV(@Body() input: CVInputDTO) {
-    return await this.cvHandlerService.handleUploadCV(input);
+    try {
+      return await this.cvHandlerService.handleUploadCV(input);
+    } catch (error) {
+      return error;
+    }
   }
 }
