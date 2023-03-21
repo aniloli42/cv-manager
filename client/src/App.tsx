@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
-import { FiUpload } from "react-icons/fi";
+import { FiTerminal } from "react-icons/fi";
 import { RxCheck, RxCross1 } from "react-icons/rx";
 import ResultCard from "./components/ResultCard";
 import { filerCVQuery } from "./services/mutation";
@@ -22,34 +22,26 @@ export const handlePercentageFinding = (data: T[]) => {
 };
 
 function App() {
-  const [formData, setFormData] = useState({ filePath: "", tags: "" });
+  const [formData, setFormData] = useState<string>("");
 
-  const { mutate, data, isError, isLoading } = useMutation({
+  const { mutate, data } = useMutation({
     mutationFn: filerCVQuery,
   });
 
-  const handleChange = (e: FormEvent) => {
-    setFormData((prevData) => ({
-      ...prevData,
-      [(e.target as HTMLInputElement).name]: (e.target as HTMLInputElement)
-        .value,
-    }));
-  };
-
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (formData.filePath === "" || formData.tags === "") return;
+    if (formData === "") return;
 
-    const tags = formData.tags.split(",");
-    mutate({ filePath: formData.filePath, tags });
+    const tags = formData.split(",");
+    mutate({ tags });
   };
 
-  const successResume = data?.data.filter((resume: ResumeType) => {
+  const successResume = data?.filter((resume: ResumeType) => {
     const matchPercentage = handlePercentageFinding(resume.result);
     if (matchPercentage >= 50) return true;
   });
 
-  const failedResume = data?.data.filter((resume: ResumeType) => {
+  const failedResume = data?.filter((resume: ResumeType) => {
     const matchPercentage = handlePercentageFinding(resume.result);
     if (matchPercentage < 50) return true;
   });
@@ -64,33 +56,25 @@ function App() {
         >
           <div className="flex gap-5 items-center">
             <div className="bg-gray-300 w-10 h-10 flex-shrink-0 rounded-full flex items-center justify-center">
-              <FiUpload />
+              <FiTerminal />
             </div>
 
             <h1 className="text-lg leading-4 text-gray-700">
-              Paste Resume Folder
-              <span className="flex text-base underline">or single resume</span>
+              Check CV Matching
+              <span className="flex text-sm underline">
+                Paste PDFs in uploads before test
+              </span>
             </h1>
           </div>
 
-          <div className="flex flex-col gap-2.5">
-            <label className="text-gray-600 text-sm">Enter Path</label>
-            <input
-              type="text"
-              className="border-b-gray-400 border-b-2 py-1 px-3"
-              value={formData.filePath}
-              name="filePath"
-              onChange={handleChange}
-            />
-          </div>
           <div className="flex flex-col gap-2.5">
             <label className="text-gray-600 text-sm">Keywords / Skills</label>
             <input
               type="text"
               className="border-b-gray-400 border-b-2 py-1 px-3"
-              value={formData.tags}
+              value={formData}
               name="tags"
-              onChange={handleChange}
+              onChange={(e) => setFormData(e.target.value)}
             />
           </div>
 

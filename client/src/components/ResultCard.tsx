@@ -12,19 +12,13 @@ export default function ResultCard({ file, result }: ResultCardType) {
       <p className="text-sm text-gray-500 ">
         {handlePercentageFinding(result)}% matched
       </p>
-      <button
+      <a
         className="[grid-column:2/3] [grid-row:1/3]"
-        type="button"
-        onClick={() => {
-          if (window == null) return;
-          window?.open(
-            "file:///home/whoami/Downloads/UNK%20financial.affidavit%202023.pdf",
-            "_blank"
-          );
-        }}
+        href={file}
+        target="_blank"
       >
         <FiEye />
-      </button>
+      </a>
     </div>
   );
 }

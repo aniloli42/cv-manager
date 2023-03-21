@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { readdirSync, statSync } from 'fs';
-import { extname } from 'path';
+import { extname, join } from 'path';
+import { env } from 'src/common/env.config';
 import { CVInputDTO } from './dtos/body-input.input';
+
+const STATIC_FILE = join(__dirname, '..', '..', 'uploads');
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pdfExtract = require('pdf-extract');
@@ -23,27 +26,27 @@ type PDFError = PDFPath & {
 @Injectable()
 export class CvHandlerService {
   async handleCVMatching(input: CVInputDTO) {
-    const isFile = this.verifyFile(input.filePath);
+    const isFile = this.verifyFile(STATIC_FILE);
 
     if (isFile) {
-      const isPDFFile = this.verifyPDFFile(input.filePath);
+      const isPDFFile = this.verifyPDFFile(STATIC_FILE);
       if (!isPDFFile) throw new Error(`Select PDF file`);
 
-      const pdfContext = await this.getPdfContext(input.filePath);
+      const pdfContext = await this.getPdfContext(STATIC_FILE);
 
       if ('error' in pdfContext) throw new Error(`Unable to read pdf`);
       const pdfText = pdfContext.text_pages;
 
       const result = this.matchTagsWithFile(input.tags, pdfText[0]);
 
-      return { file: input.filePath, result };
+      return { file: STATIC_FILE, result };
     }
 
-    const files = this.getFileList(input.filePath);
+    const files = this.getFileList(STATIC_FILE);
 
     const filesContent = await Promise.all(
       files?.map(async (file) => {
-        const filePath = `${input.filePath}\/${file}`;
+        const filePath = `${STATIC_FILE}\/${file}`;
 
         const isFile = this.verifyFile(filePath);
         if (!isFile) return null;
@@ -59,7 +62,7 @@ export class CvHandlerService {
         const result = this.matchTagsWithFile(input.tags, pdfText[0]);
 
         return {
-          file: filePath,
+          file: `${env.SERVER_ROOT}/pdf/${file}`,
           result,
         };
       }),
