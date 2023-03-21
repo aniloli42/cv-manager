@@ -1,7 +1,10 @@
 import { useMutation } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
 import { FiTerminal } from "react-icons/fi";
-import { RxCheck, RxCross1 } from "react-icons/rx";
+import { RxCheck, RxCircleBackslash, RxCross1, RxReload } from "react-icons/rx";
+import { toast, ToastContainer } from "react-toastify";
+import Card from "./components/Card";
+import ErrorCard from "./components/ErrorCard";
 import ResultCard from "./components/ResultCard";
 import { filerCVQuery } from "./services/mutation";
 
@@ -22,86 +25,95 @@ export const handlePercentageFinding = (data: T[]) => {
 };
 
 function App() {
-  const [formData, setFormData] = useState<string>("");
+  const [formTags, setFormTags] = useState<string>("");
 
-  const { mutate, data } = useMutation({
+  const { mutate, data, isLoading, isError, isSuccess } = useMutation({
     mutationFn: filerCVQuery,
   });
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (formData === "") return;
+    if (formTags === "") return;
 
-    const tags = formData.split(",");
+    const tags = formTags.split(",");
     mutate({ tags });
   };
 
-  const successResume = data?.filter((resume: ResumeType) => {
+  if (isError) toast("Something Went Wrong");
+  if (isSuccess) toast("Data Fetched");
+
+  const successResume = data?.data?.filter((resume: ResumeType) => {
+    if (resume && typeof resume === "object" && "error" in resume) return;
     const matchPercentage = handlePercentageFinding(resume.result);
     if (matchPercentage >= 50) return true;
   });
 
-  const failedResume = data?.filter((resume: ResumeType) => {
+  const failedResume = data?.data?.filter((resume: ResumeType) => {
+    if (resume && typeof resume === "object" && "error" in resume) return;
     const matchPercentage = handlePercentageFinding(resume.result);
     if (matchPercentage < 50) return true;
   });
 
+  const errorResume = data?.data?.filter((resume: unknown) => {
+    if (resume && typeof resume === "object" && "error" in resume) return true;
+  });
+
   return (
-    <div className="py-4 sm:py-10 sm:px-4 px-2 flex flex-col gap-2 sm:gap-5 ">
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(21rem,24rem))] gap-5 justify-center">
-        {/* Card 1 */}
-        <form
-          className="bg-gray-50 py-8 px-6 flex flex-col gap-5 rounded-lg self-start"
-          onSubmit={handleSubmit}
-        >
-          <div className="flex gap-5 items-center">
-            <div className="bg-gray-300 w-10 h-10 flex-shrink-0 rounded-full flex items-center justify-center">
-              <FiTerminal />
+    <>
+      <ToastContainer hideProgressBar pauseOnFocusLoss />
+      {isLoading && (
+        <div className="fixed inset-0 z-50 bg-slate-600/20 flex justify-center pt-10">
+          <div className="bg-white h-max p-4 rounded-md flex flex-col items-center gap-3">
+            <div className="animate-spin text-xl">
+              <RxReload />
             </div>
-
-            <h1 className="text-lg leading-4 text-gray-700">
-              Check CV Matching
-              <span className="flex text-sm underline">
-                Paste PDFs in uploads before test
-              </span>
-            </h1>
+            <p>Data is Fetching...</p>
           </div>
+        </div>
+      )}
+      <div className="py-4 sm:py-10 sm:px-4 px-2 flex flex-col gap-2 sm:gap-5 ">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(21rem,24rem))] gap-5 justify-center items-start">
+          {/* Card 1 */}
 
-          <div className="flex flex-col gap-2.5">
-            <label className="text-gray-600 text-sm">Keywords / Skills</label>
-            <input
-              type="text"
-              className="border-b-gray-400 border-b-2 py-1 px-3"
-              value={formData}
-              name="tags"
-              onChange={(e) => setFormData(e.target.value)}
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="bg-gray-200 py-2 px-3 rounded-sm text-gray-700"
+          <Card
+            title="Check CV Matching"
+            caption=" Paste PDFs in uploads before test"
+            icon={<FiTerminal />}
           >
-            Filter Resume
-          </button>
-        </form>
-        {/* Card 1 End */}
+            <form onSubmit={handleSubmit}>
+              <div className="flex flex-col gap-2.5">
+                <label className="text-gray-600 text-sm">
+                  Keywords / Skills
+                </label>
+                <input
+                  type="text"
+                  className="border-b-gray-400 border-b-2 py-1 px-3"
+                  value={formTags}
+                  name="tags"
+                  onChange={(e) => setFormTags(e.target.value)}
+                />
+              </div>
 
-        {/* Pass Result Card */}
-        <div className="sm:min-w-[20rem] bg-gray-50 py-8 px-6 rounded-lg min-h-[21rem]">
-          <div className="flex gap-5 items-center">
-            <div className="bg-green-400 w-10 h-10 flex-shrink-0 rounded-full flex items-center justify-center">
-              <RxCheck className="text-2xl text-white" />
-            </div>
+              <button
+                disabled={isLoading}
+                type="submit"
+                className="bg-gray-200 py-2 px-3 rounded-sm text-gray-700 mt-4 w-full disabled:cursor-not-allowed disabled:bg-red-200"
+              >
+                Filter Resume
+              </button>
+            </form>
+          </Card>
 
-            <h2 className=" leading-4 text-base text-gray-700">
-              Passed Resume
-              <span className="flex text-sm underline">
-                100% Accuracy not guaranteed
-              </span>
-            </h2>
-          </div>
-          <div className="my-2 flex flex-col gap-2">
+          {/* Card 1 End */}
+
+          {/* Pass Result Card */}
+          <Card
+            title={"Passed Resume"}
+            icon={<RxCheck className="text-2xl text-white" />}
+            iconBgColor="bg-green-400"
+            isMinHeightEnable
+            isMaxHeightEnable
+          >
             {successResume?.map((resume: ResumeType, index: number) => (
               <ResultCard
                 key={index}
@@ -109,24 +121,16 @@ function App() {
                 result={resume.result}
               />
             ))}
-          </div>
-        </div>
+          </Card>
 
-        {/* Failed Result Card */}
-        <div className="sm:min-w-[20rem] bg-gray-50 py-8 px-6 rounded-lg min-h-[21rem]">
-          <div className="flex gap-5 items-center">
-            <div className="bg-red-400 w-10 h-10 flex-shrink-0 rounded-full flex items-center justify-center">
-              <RxCross1 className="text-white text-xl" />
-            </div>
-
-            <h2 className="text-base leading-4 text-gray-700">
-              Failed Resume
-              <span className="flex text-sm underline">
-                100% Accuracy not guaranteed
-              </span>
-            </h2>
-          </div>
-          <div className="my-2 flex flex-col gap-2">
+          {/* Failed Result Card */}
+          <Card
+            title={"Failed Resume"}
+            icon={<RxCross1 className="text-2xl text-white" />}
+            iconBgColor="bg-red-400"
+            isMinHeightEnable
+            isMaxHeightEnable
+          >
             {failedResume?.map((resume: ResumeType, index: number) => (
               <ResultCard
                 key={index}
@@ -134,10 +138,24 @@ function App() {
                 result={resume.result}
               />
             ))}
-          </div>
+          </Card>
+
+          {/* Error Result Card */}
+          <Card
+            title={"Error Resume"}
+            caption="Error while pdf read"
+            icon={<RxCircleBackslash className="text-2xl text-white" />}
+            iconBgColor="bg-red-400"
+            isMinHeightEnable
+            isMaxHeightEnable
+          >
+            {errorResume?.map((resume: { file: string }, index: number) => (
+              <ErrorCard key={index} file={resume.file} />
+            ))}
+          </Card>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 

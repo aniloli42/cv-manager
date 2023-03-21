@@ -54,9 +54,19 @@ export class CvHandlerService {
         const isPDFFile = this.verifyPDFFile(filePath);
         if (!isPDFFile) return null;
 
-        const pdfContext = await this.getPdfContext(filePath);
+        const pdfContext = await this.getPdfContext(filePath).catch(
+          (err): PDFError => {
+            return err;
+          },
+        );
 
-        if ('error' in pdfContext) return pdfContext.error;
+        if ('error' in pdfContext)
+          return {
+            ...pdfContext,
+            file: ` ${env.SERVER_ROOT}/pdf/${pdfContext.pdf_path
+              .split('/')
+              .at(-1)}`,
+          };
         const pdfText = pdfContext.text_pages;
 
         const result = this.matchTagsWithFile(input.tags, pdfText[0]);
