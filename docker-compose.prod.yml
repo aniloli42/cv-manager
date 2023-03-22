@@ -1,0 +1,23 @@
+services:
+  web:
+    build:
+      context: client
+      dockerfile: Dockerfile.prod
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    environment:
+      - VITE_SERVER_URL=${VITE_SERVER_URL}
+
+  backend:
+    build:
+      context: server
+      dockerfile: Dockerfile.prod
+    ports:
+      - "5000:5000"
+    environment:
+      - SERVER_PORT=${SERVER_PORT}
+      - SERVER_ROOT=${SERVER_ROOT}
+    volumes:
+      - ${CV_FILTER_PATH}:/server/uploads

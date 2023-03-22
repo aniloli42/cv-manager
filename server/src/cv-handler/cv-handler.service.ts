@@ -6,6 +6,24 @@ import { CVInputDTO } from './dtos/body-input.input';
 
 const STATIC_FILE = join(__dirname, '..', '..', 'uploads');
 
+type PDFType = {
+  type: 'text' | 'ocr';
+  ocr_flags: ['--psm 1'];
+  enc: 'UTF-8';
+};
+
+const TEXT_OPTIONS: PDFType = {
+  type: 'text',
+  ocr_flags: ['--psm 1'],
+  enc: 'UTF-8',
+};
+
+const OCR_OPTIONS: PDFType = {
+  type: 'ocr',
+  ocr_flags: ['--psm 1'],
+  enc: 'UTF-8',
+};
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pdfExtract = require('pdf-extract');
 
@@ -54,11 +72,11 @@ export class CvHandlerService {
         const isPDFFile = this.verifyPDFFile(filePath);
         if (!isPDFFile) return null;
 
-        const pdfContext = await this.getPdfContext(filePath).catch(
-          (err): PDFError => {
-            return err;
-          },
-        );
+        const pdfContext = await this.getPdfContext(filePath)
+          .catch(async (err: PDFError) => {
+            return await this.getPdfContext(err.pdf_path, OCR_OPTIONS);
+          })
+          .catch((err): PDFError => err);
 
         if ('error' in pdfContext)
           return {
@@ -67,13 +85,14 @@ export class CvHandlerService {
               .split('/')
               .at(-1)}`,
           };
-        const pdfText = pdfContext.text_pages;
+        const pdfText = this.combinedString(pdfContext.text_pages);
 
-        const result = this.matchTagsWithFile(input.tags, pdfText[0]);
+        const result = this.matchTagsWithFile(input.tags, pdfText);
 
         return {
           file: `${env.SERVER_ROOT}/pdf/${file}`,
           result,
+          text: pdfText,
         };
       }),
     );
@@ -102,9 +121,11 @@ export class CvHandlerService {
 
   matchTagsWithFile(tags: string[], pdfText: string) {
     return tags.map((tag: string) => {
-      const findRegex = new RegExp(tag.toLowerCase(), 'g');
+      const searchTag = tag.toLowerCase();
+      const findRegex = new RegExp(searchTag, 'g');
+      const searchingIn = pdfText.toLowerCase();
 
-      const matches = pdfText.toLowerCase().matchAll(findRegex);
+      const matches = searchingIn.matchAll(findRegex);
 
       const noOfMatch = [...matches].length;
 
@@ -115,9 +136,19 @@ export class CvHandlerService {
     });
   }
 
-  getPdfContext(filePath: string): Promise<PDFContext | PDFError> {
+  combinedString(pdfData: string[]): string {
+    return pdfData.reduce((lastData, currentData) => {
+      lastData += currentData;
+      return lastData;
+    }, '');
+  }
+
+  getPdfContext(
+    filePath: string,
+    options: PDFType = TEXT_OPTIONS,
+  ): Promise<PDFContext | PDFError> {
     return new Promise((resolve, reject) => {
-      const processor = pdfExtract(filePath, { type: 'text' }, (err) => {
+      const processor = pdfExtract(filePath, options, (err) => {
         if (err) reject(err);
       });
 

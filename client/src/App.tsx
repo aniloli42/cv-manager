@@ -6,13 +6,13 @@ import { toast, ToastContainer } from "react-toastify";
 import Card from "./components/Card";
 import ErrorCard from "./components/ErrorCard";
 import ResultCard from "./components/ResultCard";
-import { filerCVQuery } from "./services/mutation";
+import { filerCVMutation } from "./services/mutation";
 
-export type T = { tag: string; no_of_match: number };
-export type ResumeType = { file: string; result: T[] };
+export type Result = { tag: string; no_of_match: number };
+export type ResumeType = { file: string; result: Result[] };
 
-export const handlePercentageFinding = (data: T[]) => {
-  const noOfMatch = data.reduce((count: number, currentData: T) => {
+export const handlePercentageFinding = (data: Result[]) => {
+  const noOfMatch = data.reduce((count: number, currentData: Result) => {
     if (currentData.no_of_match > 0) return (count += 1);
 
     return count;
@@ -27,8 +27,21 @@ export const handlePercentageFinding = (data: T[]) => {
 function App() {
   const [formTags, setFormTags] = useState<string>("");
 
-  const { mutate, data, isLoading, isError, isSuccess } = useMutation({
-    mutationFn: filerCVQuery,
+  const { mutate, data, isLoading } = useMutation({
+    mutationFn: filerCVMutation,
+    onSuccess: (data) => {
+      toast("Data Fetched", { delay: 5 });
+    },
+    onError: (error) => {
+      if (
+        error &&
+        typeof error === "object" &&
+        "message" in error &&
+        typeof error.message === "string"
+      )
+        toast(error.message, { delay: 5 });
+      else toast("Something Went Wrong", { delay: 5 });
+    },
   });
 
   const handleSubmit = (e: FormEvent) => {
@@ -38,9 +51,6 @@ function App() {
     const tags = formTags.split(",");
     mutate({ tags });
   };
-
-  if (isError) toast("Something Went Wrong");
-  if (isSuccess) toast("Data Fetched");
 
   const successResume = data?.data?.filter((resume: ResumeType) => {
     if (resume && typeof resume === "object" && "error" in resume) return;

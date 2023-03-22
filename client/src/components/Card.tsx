@@ -22,12 +22,11 @@ const Card = ({
 }: CardPropsType) => {
   return (
     <div
-      className={`sm:min-w-[20rem] bg-gray-50 px-5 rounded-lg  pb-2  overflow-auto
-      ${isMaxHeightEnable && "max-h-[27rem]"}
-      ${isMinHeightEnable ? "min-h-[21rem]" : "min-h-max"}
+      className={` bg-gray-50 rounded-lg overflow-hidden
+      
       `}
     >
-      <div className="flex gap-5 items-center py-5  sticky top-0 bg-gray-50">
+      <div className="flex gap-4 items-center py-4 px-5 bg-gray-50 border-b">
         <div
           className={`w-10 h-10 flex-shrink-0 rounded-full flex items-center justify-center ${
             iconBgColor ?? ""
@@ -43,7 +42,14 @@ const Card = ({
           </span>
         </h2>
       </div>
-      <div className="my-2 flex flex-col gap-2">{children}</div>
+      <div
+        className={`overflow-auto px-4 py-2 
+        ${isMaxHeightEnable && "max-h-[21rem]"}
+        ${isMinHeightEnable ? "min-h-[21rem]" : "min-h-max"}
+      `}
+      >
+        <div className="my-2 flex flex-col gap-2">{children}</div>
+      </div>
     </div>
   );
 };

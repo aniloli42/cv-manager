@@ -1,5 +1,5 @@
 import { FiEye } from "react-icons/fi";
-import { T, ResumeType, handlePercentageFinding } from "../App";
+import { Result, ResumeType, handlePercentageFinding } from "../App";
 
 type ResultCardType = ResumeType & {};
 

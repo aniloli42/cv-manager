@@ -1,5 +1,5 @@
 import axios from "axios";
 
-export async function filerCVQuery(data: { tags: string[] }) {
-  return await axios.post("http://localhost:5000/cv", data);
+export async function filerCVMutation(data: { tags: string[] }) {
+  return await axios.post(import.meta.env.VITE_SERVER_URL, data);
 }
