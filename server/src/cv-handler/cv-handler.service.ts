@@ -16,27 +16,48 @@ export class CvHandlerService {
   async handleCVMatching(input: CVInputDTO) {
     const files = this.getFileList(STATIC_FILE);
 
-    const filesContent = await Promise.all(
-      files?.map(async (file) => {
-        const filePath = `${STATIC_FILE}\/${file}`;
+    const filesContent = [];
+    for await (const file of files) {
+      const filePath = `${STATIC_FILE}\/${file}`;
 
-        const isFile = this.verifyFile(filePath);
-        if (!isFile) return null;
+      const isFile = this.verifyFile(filePath);
+      if (!isFile) continue;
 
-        const isPDFFile = this.verifyPDFFile(filePath);
-        if (!isPDFFile) return null;
+      const isPDFFile = this.verifyPDFFile(filePath);
+      if (!isPDFFile) continue;
 
-        const pdfText = await this.getPdfText(filePath);
+      const pdfText = await this.getPdfText(filePath);
 
-        const result = this.matchTagsWithFile(input.tags, pdfText);
+      const result = this.matchTagsWithFile(input.tags, pdfText);
 
-        return {
-          file: `${env.SERVER_ROOT}/pdf/${file}`,
-          result,
-          text: pdfText,
-        };
-      }),
-    );
+      filesContent.push({
+        file: `${env.SERVER_ROOT}/pdf/${file}`,
+        result,
+        text: pdfText,
+      });
+    }
+
+    // const filesContent = await Promise.all(
+    //   files?.map(async (file) => {
+    //     const filePath = `${STATIC_FILE}\/${file}`;
+
+    //     const isFile = this.verifyFile(filePath);
+    //     if (!isFile) return null;
+
+    //     const isPDFFile = this.verifyPDFFile(filePath);
+    //     if (!isPDFFile) return null;
+
+    //     const pdfText = await this.getPdfText(filePath);
+
+    //     const result = this.matchTagsWithFile(input.tags, pdfText);
+
+    //     return {
+    //       file: `${env.SERVER_ROOT}/pdf/${file}`,
+    //       result,
+    //       text: pdfText,
+    //     };
+    //   }),
+    // );
 
     return filesContent.filter(Boolean);
   }
