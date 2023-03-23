@@ -10,6 +10,7 @@ RUN apt -y install pdftk
 RUN apt -y install poppler-utils
 RUN apt -y install ghostscript
 RUN apt -y install tesseract-ocr
+RUN apt -y install imagemagick --fix-missing
 
 # installing pnpm
 RUN corepack enable

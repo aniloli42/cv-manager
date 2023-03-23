@@ -64,10 +64,6 @@ function App() {
     if (matchPercentage < 50) return true;
   });
 
-  const errorResume = data?.data?.filter((resume: unknown) => {
-    if (resume && typeof resume === "object" && "error" in resume) return true;
-  });
-
   return (
     <>
       <ToastContainer hideProgressBar pauseOnFocusLoss />
@@ -147,20 +143,6 @@ function App() {
                 file={resume.file}
                 result={resume.result}
               />
-            ))}
-          </Card>
-
-          {/* Error Result Card */}
-          <Card
-            title={"Error Resume"}
-            caption="Error while pdf read"
-            icon={<RxCircleBackslash className="text-2xl text-white" />}
-            iconBgColor="bg-red-400"
-            isMinHeightEnable
-            isMaxHeightEnable
-          >
-            {errorResume?.map((resume: { file: string }, index: number) => (
-              <ErrorCard key={index} file={resume.file} />
             ))}
           </Card>
         </div>

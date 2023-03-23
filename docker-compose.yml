@@ -1,5 +1,7 @@
+version: "3"
 services:
   dev_web:
+    container_name: dev_web
     build:
       context: client
       dockerfile: Dockerfile
@@ -8,17 +10,19 @@ services:
     environment:
       - VITE_SERVER_URL=${VITE_SERVER_URL}
     volumes:
-      - ${DEV_CLIENT_SRC}:/app
+      - ${DEV_CLIENT_SRC}:/app/src
 
   dev_backend:
+    container_name: dev_backend
     build:
       context: server
       dockerfile: Dockerfile
     ports:
       - "5000:5000"
+    restart: on-failure
     environment:
       - SERVER_PORT=${SERVER_PORT}
       - SERVER_ROOT=${SERVER_ROOT}
     volumes:
-      - ${DEV_SERVER_SRC}:/server
-      - ${CV_FILTER_PATH}:/server/uploads:ro
+      - ${DEV_SERVER_SRC}:/server/src
+      - ${CV_FILTER_PATH}:/server/uploads
