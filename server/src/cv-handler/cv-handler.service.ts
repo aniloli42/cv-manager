@@ -37,28 +37,6 @@ export class CvHandlerService {
       });
     }
 
-    // const filesContent = await Promise.all(
-    //   files?.map(async (file) => {
-    //     const filePath = `${STATIC_FILE}\/${file}`;
-
-    //     const isFile = this.verifyFile(filePath);
-    //     if (!isFile) return null;
-
-    //     const isPDFFile = this.verifyPDFFile(filePath);
-    //     if (!isPDFFile) return null;
-
-    //     const pdfText = await this.getPdfText(filePath);
-
-    //     const result = this.matchTagsWithFile(input.tags, pdfText);
-
-    //     return {
-    //       file: `${env.SERVER_ROOT}/pdf/${file}`,
-    //       result,
-    //       text: pdfText,
-    //     };
-    //   }),
-    // );
-
     return filesContent.filter(Boolean);
   }
 
