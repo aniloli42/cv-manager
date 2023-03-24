@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { readdirSync, statSync } from 'fs';
-import { unlink } from 'fs/promises';
+import { existsSync } from 'fs';
+import { unlink, stat, readdir, readFile, writeFile } from 'fs/promises';
 import { extname, join } from 'path';
 import { env } from 'src/common/env.config';
+import { StringDecoder } from 'string_decoder';
 import { createWorker } from 'tesseract.js';
 import { CVInputDTO } from './dtos/body-input.input';
 
@@ -10,65 +11,151 @@ import { CVInputDTO } from './dtos/body-input.input';
 const { PDFImage } = require('pdf-image');
 
 const STATIC_FILE = join(__dirname, '..', '..', 'uploads');
+const CV_CACHE_PATH = join(__dirname, '..', '..', 'fetchedData.txt');
+
+type MatchTagType = {
+  tag: string;
+  no_of_match: number;
+};
+
+type CVDataType = {
+  filePath: string;
+  result: MatchTagType[];
+  pdfText: string;
+};
 
 @Injectable()
 export class CvHandlerService {
   async handleCVMatching(input: CVInputDTO) {
-    const files = this.getFileList(STATIC_FILE);
+    try {
+      const files = await this.getDirectoryFileList(STATIC_FILE);
 
-    const filesContent = [];
-    for await (const file of files) {
-      const filePath = `${STATIC_FILE}\/${file}`;
+      let preFetchFileData = await this.getPreFetchedData();
+      let notFetchedFileList = undefined;
 
-      const isFile = this.verifyFile(filePath);
-      if (!isFile) continue;
+      if (preFetchFileData != null && preFetchFileData.length !== 0) {
+        await this.removeFromPreFetchedData(files, preFetchFileData);
+        preFetchFileData = await this.getPreFetchedData();
 
-      const isPDFFile = this.verifyPDFFile(filePath);
-      if (!isPDFFile) continue;
+        const storedFileList = this.getFileList(preFetchFileData);
+        notFetchedFileList = files.filter(
+          (file) => !storedFileList.includes(file),
+        );
+      }
 
-      const pdfText = await this.getPdfText(filePath);
+      if (notFetchedFileList && notFetchedFileList.length === 0)
+        return preFetchFileData;
 
-      const result = this.matchTagsWithFile(input.tags, pdfText);
+      const filesContent = [];
+      for await (const file of notFetchedFileList ?? files) {
+        const pdfResult = await this.handlePDFFile(file, input.tags);
+        if (pdfResult == undefined) continue;
+        filesContent.push(pdfResult);
+      }
 
-      filesContent.push({
-        file: `${env.SERVER_ROOT}/pdf/${file}`,
-        result,
-        text: pdfText,
-      });
+      let data;
+      if (preFetchFileData == null) {
+        data = [...filesContent].filter(Boolean);
+        await this.createFetchedFile(data);
+      } else {
+        data = [...preFetchFileData, ...filesContent].filter(Boolean);
+        await this.storeFetchedData(data);
+      }
+
+      return data;
+    } catch (error) {
+      return error;
     }
-
-    return filesContent.filter(Boolean);
   }
 
-  verifyFile(filePath: string) {
-    const fileStat = statSync(filePath);
+  async createFetchedFile(cvData: CVDataType[]) {
+    await this.storeFetchedData(cvData);
+  }
+
+  async storeFetchedData(data: CVDataType[]) {
+    await writeFile(CV_CACHE_PATH, JSON.stringify(data));
+  }
+
+  async getPreFetchedData() {
+    const isFileExists = this.checkFileExists(CV_CACHE_PATH);
+    if (!isFileExists) return;
+
+    const dataBuffer = await readFile(CV_CACHE_PATH);
+    const stringDecode = new StringDecoder();
+
+    const preFetchedData = stringDecode.write(dataBuffer);
+
+    return JSON.parse(preFetchedData);
+  }
+
+  checkFileExists(filePath: string): boolean {
+    return existsSync(filePath);
+  }
+
+  async removeFromPreFetchedData(
+    currentFileList: string[],
+    preFetchedData: CVDataType[],
+  ) {
+    const filteredData = preFetchedData.filter((data) => {
+      return currentFileList.some(
+        (fileName) => fileName === data.filePath.split('/').at(-1),
+      );
+    });
+
+    await writeFile(CV_CACHE_PATH, JSON.stringify(filteredData));
+  }
+
+  getFileList(dataArray: CVDataType[]) {
+    return dataArray.flatMap((data) => data.filePath.split('/').at(-1));
+  }
+
+  async handlePDFFile(fileName: string, tags: string[]): Promise<CVDataType> {
+    const File_Path = `${STATIC_FILE}\/${fileName}`;
+
+    const isFile = this.verifyIsFile(File_Path);
+    if (!isFile) return;
+
+    const isPDFFile = this.verifyIsPDF(File_Path);
+    if (!isPDFFile) return;
+
+    const pdfText = await this.getPDFText(File_Path);
+
+    const result = this.matchTagsWithPDFText(tags, pdfText);
+
+    return {
+      filePath: `${env.SERVER_ROOT}/pdf/${fileName}`,
+      result,
+      pdfText,
+    };
+  }
+
+  async verifyIsFile(filePath: string): Promise<boolean> {
+    const fileStat = await stat(filePath);
     const isFile = fileStat.isFile();
 
     if (isFile) return true;
     return false;
   }
 
-  verifyPDFFile(filePath: string) {
+  verifyIsPDF(filePath: string): boolean {
     const fileExtension = extname(filePath);
-
     if (fileExtension === '.pdf') return true;
     return false;
   }
 
-  getFileList(path: string): string[] {
-    return readdirSync(path);
+  async getDirectoryFileList(path: string): Promise<string[]> {
+    return await readdir(path);
   }
 
-  matchTagsWithFile(tags: string[], pdfText: string) {
+  matchTagsWithPDFText(tags: string[], pdfText: string): MatchTagType[] {
     return tags.map((tag: string) => {
-      const searchTag = tag.toLowerCase();
-      const findRegex = new RegExp(searchTag, 'g');
-      const searchingIn = pdfText.toLowerCase();
+      tag = tag.toLowerCase();
+      pdfText = pdfText.toLowerCase();
 
-      const matches = searchingIn.matchAll(findRegex);
+      const tagRegex = new RegExp(tag, 'g');
+      const matches = pdfText.matchAll(tagRegex);
 
       const noOfMatch = [...matches].length;
-
       return {
         tag,
         no_of_match: noOfMatch,
@@ -76,27 +163,31 @@ export class CvHandlerService {
     });
   }
 
-  async getPdfText(filePath: string) {
-    const pdfImage = new PDFImage(filePath, {
-      combinedImage: true,
-      // convertOptions: {
-      //   '-quality': '100',
-      //   '-verbose': '',
-      //   '-density': '100',
-      //   '-trim': '',
-      //   '-flatten': '',
-      //   '-sharpen': '0x1.0',
-      // },
-    });
-    const imageFilePath = await pdfImage.convertFile();
-    const pdfText = await this.handleImageOCR(imageFilePath);
+  async getPDFText(filePath: string): Promise<string> {
+    const imagePath = await this.convertPDFToImage(filePath);
+    const pdfText = await this.getTextFromImageOCR(imagePath);
 
-    await this.removeTempFiles(imageFilePath);
-
+    await this.deleteFileFromStorage(imagePath);
     return pdfText;
   }
 
-  async handleImageOCR(imagePath) {
+  async convertPDFToImage(filePath: string): Promise<string> {
+    const pdfImage = new PDFImage(filePath, {
+      combinedImage: true,
+      convertOptions: {
+        '-quality': '100',
+        '-verbose': '',
+        '-density': '160',
+        '-trim': '',
+        '-flatten': '',
+        '-sharpen': '0x1.0',
+      },
+    });
+
+    return await pdfImage.convertFile();
+  }
+
+  async getTextFromImageOCR(imagePath: string): Promise<string> {
     const worker = await createWorker();
     await worker.loadLanguage('eng');
     await worker.initialize('eng');
@@ -107,7 +198,7 @@ export class CvHandlerService {
     return text;
   }
 
-  async removeTempFiles(filePath: string) {
+  async deleteFileFromStorage(filePath: string): Promise<void> {
     await unlink(filePath);
   }
 }
