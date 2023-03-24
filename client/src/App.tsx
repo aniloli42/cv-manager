@@ -9,12 +9,19 @@ import ResultCard from "./components/ResultCard";
 import { filerCVMutation } from "./services/mutation";
 
 export type Result = { tag: string; no_of_match: number };
-export type ResumeType = { file: string; result: Result[] };
+export type ResumeType = {
+  filePath: string;
+  result: Result[];
+  pdfText: string;
+};
+
+const displayMessage = (message: string) => {
+  toast(message, { delay: 5 });
+};
 
 export const handlePercentageFinding = (data: Result[]) => {
   const noOfMatch = data.reduce((count: number, currentData: Result) => {
     if (currentData.no_of_match > 0) return (count += 1);
-
     return count;
   }, 0);
 
@@ -30,7 +37,9 @@ function App() {
   const { mutate, data, isLoading } = useMutation({
     mutationFn: filerCVMutation,
     onSuccess: (data) => {
-      toast("Data Fetched", { delay: 5 });
+      if (data?.data.length === 0)
+        return displayMessage("Pdf not available in the folder");
+      displayMessage(`${data.data.length} CV Fetched`);
     },
     onError: (error) => {
       if (
@@ -39,8 +48,8 @@ function App() {
         "message" in error &&
         typeof error.message === "string"
       )
-        toast(error.message, { delay: 5 });
-      else toast("Something Went Wrong", { delay: 5 });
+        displayMessage(error.message);
+      else displayMessage("Something Went Wrong!!!");
     },
   });
 
@@ -78,9 +87,8 @@ function App() {
         </div>
       )}
       <div className="py-4 sm:py-10 sm:px-4 px-2 flex flex-col gap-2 sm:gap-5 ">
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(21rem,24rem))] gap-5 justify-center items-start">
-          {/* Card 1 */}
-
+        {/* Card 1 */}
+        <div className="max-w-[24rem]  sm:min-w-[24rem] min-w-full sm:mx-auto">
           <Card
             title="Check CV Matching"
             caption=" Paste PDFs in uploads before test"
@@ -91,12 +99,14 @@ function App() {
                 <label className="text-gray-600 text-sm">
                   Keywords / Skills
                 </label>
-                <input
-                  type="text"
-                  className="border-b-gray-400 border-b-2 py-1 px-3"
+                <textarea
+                  className="border-b-gray-400 border-b-2 py-1 px-3 resize-none"
                   value={formTags}
                   name="tags"
-                  onChange={(e) => setFormTags(e.target.value)}
+                  autoComplete="off"
+                  autoCapitalize="off"
+                  inputMode="text"
+                  onChange={(e) => setFormTags(e.target.value.trimStart())}
                 />
               </div>
 
@@ -109,42 +119,41 @@ function App() {
               </button>
             </form>
           </Card>
+        </div>
+        {/* Card 1 End */}
 
-          {/* Card 1 End */}
+        <div className="grid sm:grid-cols-[repeat(auto-fit,minmax(27rem,32rem))] gap-5 justify-center items-start">
+          {((successResume && successResume.length !== 0) ||
+            (failedResume && failedResume.length !== 0)) && (
+            <>
+              {/* Pass Result Card */}
 
-          {/* Pass Result Card */}
-          <Card
-            title={"Passed Resume"}
-            icon={<RxCheck className="text-2xl text-white" />}
-            iconBgColor="bg-green-400"
-            isMinHeightEnable
-            isMaxHeightEnable
-          >
-            {successResume?.map((resume: ResumeType, index: number) => (
-              <ResultCard
-                key={index}
-                file={resume.file}
-                result={resume.result}
-              />
-            ))}
-          </Card>
+              <Card
+                title={`${successResume.length} Passed Resume`}
+                icon={<RxCheck className="text-2xl text-white" />}
+                iconBgColor="bg-green-400"
+                isMinHeightEnable
+                isMaxHeightEnable
+              >
+                {successResume?.map((resume: ResumeType, index: number) => (
+                  <ResultCard key={index} {...resume} />
+                ))}
+              </Card>
 
-          {/* Failed Result Card */}
-          <Card
-            title={"Failed Resume"}
-            icon={<RxCross1 className="text-2xl text-white" />}
-            iconBgColor="bg-red-400"
-            isMinHeightEnable
-            isMaxHeightEnable
-          >
-            {failedResume?.map((resume: ResumeType, index: number) => (
-              <ResultCard
-                key={index}
-                file={resume.file}
-                result={resume.result}
-              />
-            ))}
-          </Card>
+              {/* Failed Result Card */}
+              <Card
+                title={`${failedResume.length} Failed Resume`}
+                icon={<RxCross1 className="text-2xl text-white" />}
+                iconBgColor="bg-red-400"
+                isMinHeightEnable
+                isMaxHeightEnable
+              >
+                {failedResume?.map((resume: ResumeType, index: number) => (
+                  <ResultCard key={index} {...resume} />
+                ))}
+              </Card>
+            </>
+          )}
         </div>
       </div>
     </>
