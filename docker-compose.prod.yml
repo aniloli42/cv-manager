@@ -14,7 +14,7 @@ services:
       - VITE_SERVER_URL=${VITE_SERVER_URL}
 
   backend:
-    container_name: prod_web
+    container_name: prod_backend
     build:
       context: server
       dockerfile: Dockerfile.prod
