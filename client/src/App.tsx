@@ -40,7 +40,7 @@ function App() {
         return displayMessage("Pdf not available in the folder");
       displayMessage(`${data.data.length} CV Fetched`);
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       if (
         error &&
         typeof error === "object" &&
@@ -79,7 +79,7 @@ function App() {
   });
 
   const successResume = resumesWithPercentage
-    .filter(
+    ?.filter(
       (resume: ResumeTypeWithMatchPercentage) => resume.matchPercentage >= 50
     )
     .sort(
@@ -94,7 +94,7 @@ function App() {
     );
 
   const failedResume = resumesWithPercentage
-    .filter(
+    ?.filter(
       (resume: ResumeTypeWithMatchPercentage) => resume.matchPercentage < 50
     )
     .sort(

@@ -9,11 +9,11 @@ COPY package.json .
 RUN pnpm i
 COPY . .
 
-ENTRYPOINT [ "pnpm", "build" ]
+RUN [ "pnpm", "build" ]
 
 FROM nginx:stable-alpine
 WORKDIR /usr/share/nginx/html
 RUN rm -rf ./*
 COPY --from=Build /app/dist .
-ENTRYPOINT ["nginx", "-g", "daemon off;"]
 EXPOSE 80
+ENTRYPOINT ["nginx", "-g", "daemon off;"]
