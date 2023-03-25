@@ -1,10 +1,9 @@
 import { useMutation } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
 import { FiTerminal } from "react-icons/fi";
-import { RxCheck, RxCircleBackslash, RxCross1, RxReload } from "react-icons/rx";
+import { RxCheck, RxCross1, RxReload } from "react-icons/rx";
 import { toast, ToastContainer } from "react-toastify";
 import Card from "./components/Card";
-import ErrorCard from "./components/ErrorCard";
 import ResultCard from "./components/ResultCard";
 import { filerCVMutation } from "./services/mutation";
 
@@ -26,7 +25,7 @@ export const handlePercentageFinding = (data: Result[]) => {
   }, 0);
 
   const noOfTags = data.length;
-  const matchPercentage = parseFloat(((noOfMatch / noOfTags) * 100).toFixed(2));
+  const matchPercentage = Math.round((noOfMatch / noOfTags) * 100);
 
   return matchPercentage;
 };
@@ -57,21 +56,57 @@ function App() {
     e.preventDefault();
     if (formTags === "") return;
 
-    const tags = formTags.split(",");
+    const tags = formTags
+      .split(",")
+      .filter((tag) => {
+        if (tag === " ") return false;
+        if (tag === "") return false;
+
+        return true;
+      })
+      .map((tag) => tag.trim());
+
     mutate({ tags });
   };
 
-  const successResume = data?.data?.filter((resume: ResumeType) => {
-    if (resume && typeof resume === "object" && "error" in resume) return;
+  type ResumeTypeWithMatchPercentage = ResumeType & {
+    matchPercentage: number;
+  };
+
+  const resumesWithPercentage = data?.data?.map((resume: ResumeType) => {
     const matchPercentage = handlePercentageFinding(resume.result);
-    if (matchPercentage >= 50) return true;
+    return { ...resume, matchPercentage };
   });
 
-  const failedResume = data?.data?.filter((resume: ResumeType) => {
-    if (resume && typeof resume === "object" && "error" in resume) return;
-    const matchPercentage = handlePercentageFinding(resume.result);
-    if (matchPercentage < 50) return true;
-  });
+  const successResume = resumesWithPercentage
+    .filter(
+      (resume: ResumeTypeWithMatchPercentage) => resume.matchPercentage >= 50
+    )
+    .sort(
+      (
+        resumeA: ResumeTypeWithMatchPercentage,
+        resumeB: ResumeTypeWithMatchPercentage
+      ) => {
+        if (resumeA.matchPercentage > resumeB.matchPercentage) return -1;
+        if (resumeA.matchPercentage < resumeB.matchPercentage) return 1;
+        return 0;
+      }
+    );
+
+  const failedResume = resumesWithPercentage
+    .filter(
+      (resume: ResumeTypeWithMatchPercentage) => resume.matchPercentage < 50
+    )
+    .sort(
+      (
+        resumeA: ResumeTypeWithMatchPercentage,
+        resumeB: ResumeTypeWithMatchPercentage
+      ) => {
+        if (resumeA.matchPercentage > resumeB.matchPercentage) return -1;
+        if (resumeA.matchPercentage < resumeB.matchPercentage) return 1;
+        return 0;
+      }
+    );
 
   return (
     <>
@@ -93,6 +128,7 @@ function App() {
             title="Check CV Matching"
             caption=" Paste PDFs in uploads before test"
             icon={<FiTerminal />}
+            iconBgColor="bg-gray-300"
           >
             <form onSubmit={handleSubmit}>
               <div className="flex flex-col gap-2.5">

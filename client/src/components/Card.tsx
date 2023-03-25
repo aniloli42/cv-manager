@@ -22,11 +22,11 @@ const Card = ({
 }: CardPropsType) => {
   return (
     <div
-      className={` bg-gray-50 rounded-lg overflow-hidden
+      className={` bg-gray-100 shadow-lg shadow-card-body rounded-lg overflow-hidden
       
       `}
     >
-      <div className="flex gap-4 items-center py-4 px-5 bg-gray-50 border-b">
+      <div className="flex gap-4 items-center py-4 px-5 bg-gray-200 shadow shadow-card-header border-b">
         <div
           className={`w-10 h-10 flex-shrink-0 rounded-full flex items-center justify-center ${
             iconBgColor ?? ""
@@ -34,13 +34,12 @@ const Card = ({
         >
           {icon}
         </div>
-
-        <h2 className="leading-4 text-base text-gray-700 ">
-          {title}
-          <span className="flex text-sm underline">
+        <div>
+          <h2 className="leading-5 text-lg text-gray-600 ">{title}</h2>
+          <p className="flex text-sm text-gray-500">
             {caption ?? "100% Accuracy not guaranteed"}
-          </span>
-        </h2>
+          </p>
+        </div>
       </div>
       <div
         className={`overflow-auto px-4 py-2 
