@@ -24,13 +24,16 @@ type CVDataType = {
   pdfText: string;
 };
 
+type SavedCV = Omit<CVDataType, 'result'>;
+
 @Injectable()
 export class CvHandlerService {
   async handleCVMatching(input: CVInputDTO) {
     try {
       const files = await this.getDirectoryFileList(STATIC_FILE);
 
-      let preFetchFileData = await this.getPreFetchedData();
+      let preFetchFileData: SavedCV[] | undefined =
+        await this.getPreFetchedData();
       let notFetchedFileList = undefined;
 
       if (preFetchFileData != null && preFetchFileData.length !== 0) {
@@ -43,8 +46,21 @@ export class CvHandlerService {
         );
       }
 
-      if (notFetchedFileList && notFetchedFileList.length === 0)
-        return preFetchFileData;
+      if (notFetchedFileList && notFetchedFileList.length === 0) {
+        const finalResult: CVDataType[] = [];
+
+        for await (const { filePath, pdfText } of preFetchFileData) {
+          const result = this.matchTagsWithPDFText(input.tags, pdfText);
+
+          finalResult.push({
+            filePath,
+            result,
+            pdfText,
+          });
+        }
+
+        return finalResult;
+      }
 
       const filesContent = [];
       for await (const file of notFetchedFileList ?? files) {
@@ -94,7 +110,7 @@ export class CvHandlerService {
 
   async removeFromPreFetchedData(
     currentFileList: string[],
-    preFetchedData: CVDataType[],
+    preFetchedData: CVDataType[] | SavedCV[],
   ) {
     const filteredData = preFetchedData.filter((data) => {
       return currentFileList.some(
@@ -105,7 +121,7 @@ export class CvHandlerService {
     await writeFile(CV_CACHE_PATH, JSON.stringify(filteredData));
   }
 
-  getFileList(dataArray: CVDataType[]) {
+  getFileList(dataArray: CVDataType[] | SavedCV[]) {
     return dataArray.flatMap((data) => data.filePath.split('/').at(-1));
   }
 
