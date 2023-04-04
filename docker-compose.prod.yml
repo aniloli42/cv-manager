@@ -5,13 +5,9 @@ services:
     build:
       context: client
       dockerfile: Dockerfile.prod
-    depends_on:
-      - backend
     restart: on-failure
     ports:
       - "80:80"
-    environment:
-      - VITE_SERVER_URL=${VITE_SERVER_URL}
 
   backend:
     container_name: prod_backend
@@ -25,4 +21,4 @@ services:
       - SERVER_PORT=${SERVER_PORT}
       - SERVER_ROOT=${SERVER_ROOT}
     volumes:
-      - ${CV_FILTER_PATH}:/server/uploads
+      - ../filter-cv-files:/server/uploads

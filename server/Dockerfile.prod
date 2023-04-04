@@ -1,7 +1,19 @@
-FROM node:19.8.1 
+FROM node:19.8.1 AS Base
 
+
+FROM Base AS Build
 WORKDIR /server
+COPY package.json yarn.lock* ./
+COPY package.json .
+RUN yarn --frozen-lock
+COPY . .
+ENV NODE_ENV production
+RUN yarn build
 
+
+FROM Base AS Prod
+ENV NODE_ENV production
+WORKDIR /server
 RUN apt update
 RUN apt -y upgrade
 
@@ -13,15 +25,8 @@ RUN apt -y install tesseract-ocr
 RUN apt -y install imagemagick --fix-missing
 RUN sed -i '/disable ghostscript format types/,+6d' /etc/ImageMagick-6/policy.xml
 
+COPY --from=Build /server/node_modules ./node_modules
+COPY --from=Build /server/dist ./dist
 
-# installing pnpm
-RUN corepack enable
-RUN corepack prepare pnpm@latest --activate
-
-
-COPY package.json .
-RUN pnpm i
-COPY . .
-
-ENTRYPOINT [ "pnpm", "prod" ]
+ENTRYPOINT [ "node", "dist/main.js" ]
 EXPOSE ${SERVER_PORT} 

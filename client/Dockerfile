@@ -2,12 +2,9 @@ FROM node:19.8.1-alpine3.17 AS Build
 
 WORKDIR /app
 
-RUN corepack enable
-RUN corepack prepare pnpm@latest --activate
-
-COPY package.json .
-RUN pnpm i
+COPY package.json yarn.lock* ./
+RUN yarn
 COPY . .
 
-ENTRYPOINT [ "pnpm","dev","--host" ]
+ENTRYPOINT [ "yarn","dev","--host" ]
 EXPOSE 5173

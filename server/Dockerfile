@@ -16,9 +16,9 @@ RUN sed -i '/disable ghostscript format types/,+6d' /etc/ImageMagick-6/policy.xm
 RUN corepack enable
 RUN corepack prepare pnpm@latest --activate
 
-COPY package.json .
-RUN pnpm i
+COPY package.json yarn.lock* ./
+RUN yarn --frozen-lock
 COPY . .
 
-ENTRYPOINT [ "pnpm", "dev" ]
+ENTRYPOINT [ "yarn", "dev" ]
 EXPOSE ${SERVER_PORT}

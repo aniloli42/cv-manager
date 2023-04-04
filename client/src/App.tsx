@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { FiTerminal } from "react-icons/fi";
 import { RxCheck, RxCross1, RxReload } from "react-icons/rx";
 import { toast, ToastContainer } from "react-toastify";
@@ -12,6 +12,10 @@ export type ResumeType = {
   filePath: string;
   result: Result[];
   pdfText: string;
+};
+
+type ResumeTypeWithMatchPercentage = ResumeType & {
+  matchPercentage: number;
 };
 
 const displayMessage = (message: string) => {
@@ -30,14 +34,53 @@ export const handlePercentageFinding = (data: Result[]) => {
   return matchPercentage;
 };
 
+const calculateTotalTagMatch = (resultArr: Result[]): number =>
+  resultArr.reduce((previous, currentNumber) => {
+    return previous + currentNumber.no_of_match;
+  }, 0);
+
+const sortResult = (
+  resumeWithMatchPercentage: ResumeTypeWithMatchPercentage[]
+) =>
+  resumeWithMatchPercentage?.sort(
+    (
+      resumeA: ResumeTypeWithMatchPercentage,
+      resumeB: ResumeTypeWithMatchPercentage
+    ) => {
+      if (resumeA.matchPercentage > resumeB.matchPercentage) return -1;
+      if (resumeA.matchPercentage < resumeB.matchPercentage) return 1;
+      if (
+        resumeA.matchPercentage === resumeB.matchPercentage &&
+        calculateTotalTagMatch(resumeA.result) >
+          calculateTotalTagMatch(resumeB.result)
+      )
+        return -1;
+
+      if (
+        resumeA.matchPercentage === resumeB.matchPercentage &&
+        calculateTotalTagMatch(resumeA.result) <
+          calculateTotalTagMatch(resumeB.result)
+      )
+        return 1;
+      return 0;
+    }
+  );
+
 function App() {
   const [formTags, setFormTags] = useState<string>("");
 
   const { mutate, data, isLoading } = useMutation({
     mutationFn: filerCVMutation,
-    onSuccess: (data) => {
-      if (data?.data.length === 0)
+    onSuccess: (data: unknown) => {
+      if (data == null || typeof data !== "object") return null;
+
+      if (!("data" in data))
+        return displayMessage("data is not found in response");
+      if (!Array.isArray(data.data))
+        return displayMessage("typeof data is not array");
+      if (data.data.length === 0)
         return displayMessage("Pdf not available in the folder");
+
       displayMessage(`${data.data.length} CV Fetched`);
     },
     onError: (error: unknown) => {
@@ -46,9 +89,11 @@ function App() {
         typeof error === "object" &&
         "message" in error &&
         typeof error.message === "string"
-      )
+      ) {
+        console.error({ error, message: "Error found" });
         displayMessage(error.message);
-      else displayMessage("Something Went Wrong!!!");
+      } else displayMessage("Something Went Wrong!!!");
+      console.error({ error });
     },
   });
 
@@ -69,44 +114,26 @@ function App() {
     mutate({ tags });
   };
 
-  type ResumeTypeWithMatchPercentage = ResumeType & {
-    matchPercentage: number;
-  };
-
   const resumesWithPercentage = data?.data?.map((resume: ResumeType) => {
     const matchPercentage = handlePercentageFinding(resume.result);
     return { ...resume, matchPercentage };
   });
 
-  const successResume = resumesWithPercentage
-    ?.filter(
+  const successResume = useMemo(() => {
+    const filteredResult = resumesWithPercentage?.filter(
       (resume: ResumeTypeWithMatchPercentage) => resume.matchPercentage >= 50
-    )
-    .sort(
-      (
-        resumeA: ResumeTypeWithMatchPercentage,
-        resumeB: ResumeTypeWithMatchPercentage
-      ) => {
-        if (resumeA.matchPercentage > resumeB.matchPercentage) return -1;
-        if (resumeA.matchPercentage < resumeB.matchPercentage) return 1;
-        return 0;
-      }
     );
 
-  const failedResume = resumesWithPercentage
-    ?.filter(
+    return sortResult(filteredResult);
+  }, [resumesWithPercentage]);
+
+  const failedResume = useMemo(() => {
+    const filteredResult = resumesWithPercentage?.filter(
       (resume: ResumeTypeWithMatchPercentage) => resume.matchPercentage < 50
-    )
-    .sort(
-      (
-        resumeA: ResumeTypeWithMatchPercentage,
-        resumeB: ResumeTypeWithMatchPercentage
-      ) => {
-        if (resumeA.matchPercentage > resumeB.matchPercentage) return -1;
-        if (resumeA.matchPercentage < resumeB.matchPercentage) return 1;
-        return 0;
-      }
     );
+
+    return sortResult(filteredResult);
+  }, [resumesWithPercentage]);
 
   return (
     <>
