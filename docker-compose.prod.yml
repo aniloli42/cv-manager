@@ -20,5 +20,6 @@ services:
     environment:
       - SERVER_PORT=${SERVER_PORT}
       - SERVER_ROOT=${SERVER_ROOT}
+      - CHOKIDAR_USEPOLLING=true
     volumes:
       - ../filter-cv-files:/server/uploads
