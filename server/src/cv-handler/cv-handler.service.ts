@@ -67,16 +67,12 @@ export class CvHandlerService {
         const pdfResult = await this.handlePDFFile(file, input.tags);
         if (pdfResult == undefined) continue;
         filesContent.push(pdfResult);
+        await this.storeFetchedData(pdfResult);
       }
 
       let data;
-      if (preFetchFileData == null) {
-        data = [...filesContent].filter(Boolean);
-        await this.createFetchedFile(data);
-      } else {
-        data = [...preFetchFileData, ...filesContent].filter(Boolean);
-        await this.storeFetchedData(data);
-      }
+      if (preFetchFileData == null) data = [...filesContent].filter(Boolean);
+      else data = [...preFetchFileData, ...filesContent].filter(Boolean);
 
       return data;
     } catch (error) {
@@ -84,12 +80,21 @@ export class CvHandlerService {
     }
   }
 
-  async createFetchedFile(cvData: CVDataType[]) {
-    await this.storeFetchedData(cvData);
-  }
+  async storeFetchedData(data: CVDataType) {
+    const getPreData = await this.getPreFetchedData();
 
-  async storeFetchedData(data: CVDataType[]) {
-    await writeFile(CV_CACHE_PATH, JSON.stringify(data));
+    if (getPreData == null)
+      return await writeFile(CV_CACHE_PATH, JSON.stringify([data]));
+
+    if (!Array.isArray(getPreData)) return;
+    const isPreDataArray = getPreData.every((data: unknown) =>
+      this.isCVDataType(data),
+    );
+
+    if (!isPreDataArray)
+      return await writeFile(CV_CACHE_PATH, JSON.stringify([data]));
+
+    await writeFile(CV_CACHE_PATH, JSON.stringify([...getPreData, data]));
   }
 
   async getPreFetchedData() {
@@ -119,6 +124,16 @@ export class CvHandlerService {
     });
 
     await writeFile(CV_CACHE_PATH, JSON.stringify(filteredData));
+  }
+
+  isCVDataType(obj: unknown): obj is CVDataType {
+    return (
+      typeof obj === 'object' &&
+      obj !== null &&
+      'filePath' in obj &&
+      'result' in obj &&
+      'pdfText' in obj
+    );
   }
 
   getFileList(dataArray: CVDataType[] | SavedCV[]) {
