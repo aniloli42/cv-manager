@@ -23,6 +23,5 @@ services:
       - SERVER_PORT=${SERVER_PORT}
       - SERVER_ROOT=${SERVER_ROOT}
     volumes:
-      - ./server:/server
       - ./server/src:/server/src:ro
       - ${CV_FILTER_PATH}:/server/uploads:rw

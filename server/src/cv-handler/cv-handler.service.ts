@@ -7,6 +7,8 @@ import { StringDecoder } from 'string_decoder';
 import { createWorker } from 'tesseract.js';
 import { CVInputDTO } from './dtos/body-input.input';
 
+import { PromisePool } from '@supercharge/promise-pool';
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { PDFImage } = require('pdf-image');
 
@@ -36,7 +38,11 @@ export class CvHandlerService {
         await this.getPreFetchedData();
       let notFetchedFileList = undefined;
 
-      if (preFetchFileData != null && preFetchFileData.length !== 0) {
+      if (
+        !!preFetchFileData &&
+        Array.isArray(preFetchFileData) &&
+        preFetchFileData.length !== 0
+      ) {
         await this.removeFromPreFetchedData(files, preFetchFileData);
         preFetchFileData = await this.getPreFetchedData();
 
@@ -46,7 +52,17 @@ export class CvHandlerService {
         );
       }
 
-      if (notFetchedFileList && notFetchedFileList.length === 0) {
+      if (
+        preFetchFileData == null ||
+        (Array.isArray(preFetchFileData) && preFetchFileData.length === 0)
+      )
+        notFetchedFileList = files;
+
+      if (
+        !!notFetchedFileList &&
+        notFetchedFileList.length === 0 &&
+        files.length === preFetchFileData?.length
+      ) {
         const finalResult: CVDataType[] = [];
 
         for await (const { filePath, pdfText } of preFetchFileData) {
@@ -61,21 +77,27 @@ export class CvHandlerService {
 
         return finalResult;
       }
+      if (notFetchedFileList?.length == 0) return [];
 
-      const filesContent = [];
-      for await (const file of notFetchedFileList ?? files) {
-        const pdfResult = await this.handlePDFFile(file, input.tags);
-        if (pdfResult == undefined) continue;
-        filesContent.push(pdfResult);
-        await this.storeFetchedData(pdfResult);
-      }
+      const { results } = await PromisePool.withConcurrency(5)
+        .for(notFetchedFileList)
+        .process(async (cvData) => {
+          if (typeof cvData !== 'string') return;
+
+          const pdfResult = await this.handlePDFFile(cvData, input.tags);
+          if (pdfResult == undefined) return '';
+          await this.storeFetchedData(pdfResult);
+          return pdfResult;
+        });
 
       let data;
-      if (preFetchFileData == null) data = [...filesContent].filter(Boolean);
-      else data = [...preFetchFileData, ...filesContent].filter(Boolean);
+      if (preFetchFileData == null) data = [...results].filter(Boolean);
+      else data = [...preFetchFileData, ...results].filter(Boolean);
 
       return data;
     } catch (error) {
+      console.error(error);
+
       return error;
     }
   }

@@ -76,6 +76,7 @@ function App() {
 
       if (!("data" in data))
         return displayMessage("data is not found in response");
+
       if (!Array.isArray(data.data))
         return displayMessage("typeof data is not array");
       if (data.data.length === 0)
@@ -114,12 +115,21 @@ function App() {
     mutate({ tags });
   };
 
-  const resumesWithPercentage = data?.data?.map((resume: ResumeType) => {
-    const matchPercentage = handlePercentageFinding(resume.result);
-    return { ...resume, matchPercentage };
-  });
+  const resumesWithPercentage =
+    data &&
+    typeof data === "object" &&
+    "data" in data &&
+    Array.isArray(data.data) &&
+    data.data.length !== 0 &&
+    data.data.map((resume: ResumeType) => {
+      const matchPercentage = handlePercentageFinding(resume.result);
+      return { ...resume, matchPercentage };
+    });
 
   const successResume = useMemo(() => {
+    if (resumesWithPercentage == null || !Array.isArray(resumesWithPercentage))
+      return;
+
     const filteredResult = resumesWithPercentage?.filter(
       (resume: ResumeTypeWithMatchPercentage) => resume.matchPercentage >= 50
     );
@@ -128,6 +138,9 @@ function App() {
   }, [resumesWithPercentage]);
 
   const failedResume = useMemo(() => {
+    if (resumesWithPercentage == null || !Array.isArray(resumesWithPercentage))
+      return;
+
     const filteredResult = resumesWithPercentage?.filter(
       (resume: ResumeTypeWithMatchPercentage) => resume.matchPercentage < 50
     );
@@ -192,7 +205,7 @@ function App() {
               {/* Pass Result Card */}
 
               <Card
-                title={`${successResume.length} Passed Resume`}
+                title={`${successResume?.length ?? ""} Passed Resume`}
                 icon={<RxCheck className="text-2xl text-white" />}
                 iconBgColor="bg-green-400"
                 isMinHeightEnable
@@ -205,7 +218,7 @@ function App() {
 
               {/* Failed Result Card */}
               <Card
-                title={`${failedResume.length} Failed Resume`}
+                title={`${failedResume?.length ?? ""} Failed Resume`}
                 icon={<RxCross1 className="text-2xl text-white" />}
                 iconBgColor="bg-red-400"
                 isMinHeightEnable
