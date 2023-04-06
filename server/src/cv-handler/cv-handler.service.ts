@@ -39,7 +39,7 @@ export class CvHandlerService {
       let notFetchedFileList = undefined;
 
       if (
-        !!preFetchFileData &&
+        preFetchFileData != null &&
         Array.isArray(preFetchFileData) &&
         preFetchFileData.length !== 0
       ) {
@@ -59,7 +59,7 @@ export class CvHandlerService {
         notFetchedFileList = files;
 
       if (
-        !!notFetchedFileList &&
+        notFetchedFileList != null &&
         notFetchedFileList.length === 0 &&
         files.length === preFetchFileData?.length
       ) {
@@ -77,46 +77,43 @@ export class CvHandlerService {
 
         return finalResult;
       }
+
       if (notFetchedFileList?.length == 0) return [];
 
-      const { results } = await PromisePool.withConcurrency(5)
+      await PromisePool.withConcurrency(5)
         .for(notFetchedFileList)
+        .withTaskTimeout(60000)
         .process(async (cvData) => {
           if (typeof cvData !== 'string') return;
 
-          const pdfResult = await this.handlePDFFile(cvData, input.tags);
+          const pdfResult = await this.handlePDFFile(cvData);
+
           if (pdfResult == undefined) return '';
-          await this.storeFetchedData(pdfResult);
-          return pdfResult;
+          if (preFetchFileData != null)
+            preFetchFileData = [...preFetchFileData, pdfResult];
+          if (preFetchFileData == null) preFetchFileData = [pdfResult];
+
+          await this.storeFetchedData(preFetchFileData);
         });
 
-      let data;
-      if (preFetchFileData == null) data = [...results].filter(Boolean);
-      else data = [...preFetchFileData, ...results].filter(Boolean);
+      if (preFetchFileData != null && preFetchFileData.length !== 0) {
+        preFetchFileData = preFetchFileData.map((data): CVDataType => {
+          const result = this.matchTagsWithPDFText(input.tags, data.pdfText);
 
-      return data;
+          return { ...data, result };
+        });
+      }
+
+      return preFetchFileData;
     } catch (error) {
-      console.error(error);
+      console.error({ error });
 
       return error;
     }
   }
 
-  async storeFetchedData(data: CVDataType) {
-    const getPreData = await this.getPreFetchedData();
-
-    if (getPreData == null)
-      return await writeFile(CV_CACHE_PATH, JSON.stringify([data]));
-
-    if (!Array.isArray(getPreData)) return;
-    const isPreDataArray = getPreData.every((data: unknown) =>
-      this.isCVDataType(data),
-    );
-
-    if (!isPreDataArray)
-      return await writeFile(CV_CACHE_PATH, JSON.stringify([data]));
-
-    await writeFile(CV_CACHE_PATH, JSON.stringify([...getPreData, data]));
+  async storeFetchedData(data: SavedCV[]) {
+    await writeFile(CV_CACHE_PATH, JSON.stringify([...data]));
   }
 
   async getPreFetchedData() {
@@ -162,7 +159,7 @@ export class CvHandlerService {
     return dataArray.flatMap((data) => data.filePath.split('/').at(-1));
   }
 
-  async handlePDFFile(fileName: string, tags: string[]): Promise<CVDataType> {
+  async handlePDFFile(fileName: string): Promise<SavedCV> {
     const File_Path = `${STATIC_FILE}\/${fileName}`;
 
     const isFile = this.verifyIsFile(File_Path);
@@ -173,11 +170,8 @@ export class CvHandlerService {
 
     const pdfText = await this.getPDFText(File_Path);
 
-    const result = this.matchTagsWithPDFText(tags, pdfText);
-
     return {
       filePath: `${env.SERVER_ROOT}/pdf/${fileName}`,
-      result,
       pdfText,
     };
   }
