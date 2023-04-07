@@ -82,7 +82,7 @@ export class CvHandlerService {
 
       await PromisePool.withConcurrency(5)
         .for(notFetchedFileList)
-        .withTaskTimeout(60000)
+        .withTaskTimeout(75000)
         .process(async (cvData) => {
           if (typeof cvData !== 'string') return;
 
