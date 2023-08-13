@@ -6,7 +6,7 @@ import { env } from 'src/common/env.config';
 import { StringDecoder } from 'string_decoder';
 import { createWorker } from 'tesseract.js';
 import { CVInputDTO } from './dtos/body-input.input';
-
+import { cpus } from 'os'
 import { PromisePool } from '@supercharge/promise-pool';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -32,40 +32,40 @@ type SavedCV = Omit<CVDataType, 'result'>;
 export class CvHandlerService {
   async handleCVMatching(input: CVInputDTO) {
     try {
-      const files = await this.getDirectoryFileList(STATIC_FILE);
+      const files = await this.getDirectoryFiles(STATIC_FILE);
 
-      let preFetchFileData: SavedCV[] | undefined =
-        await this.getPreFetchedData();
-      let notFetchedFileList = undefined;
+      let preFetchedDatas: SavedCV[] | undefined =
+        await this.getPreFetchedDatas();
+      let newFiles = undefined;
 
       if (
-        preFetchFileData != null &&
-        Array.isArray(preFetchFileData) &&
-        preFetchFileData.length !== 0
+        preFetchedDatas != null &&
+        Array.isArray(preFetchedDatas) &&
+        preFetchedDatas.length !== 0
       ) {
-        await this.removeFromPreFetchedData(files, preFetchFileData);
-        preFetchFileData = await this.getPreFetchedData();
+        await this.removePreFetchedDatas(files, preFetchedDatas);
+        preFetchedDatas = await this.getPreFetchedDatas();
 
-        const storedFileList = this.getFileList(preFetchFileData);
-        notFetchedFileList = files.filter(
-          (file) => !storedFileList.includes(file),
+        const storedFiles = this.getFiles(preFetchedDatas);
+        newFiles = files.filter(
+          (file) => !storedFiles.includes(file),
         );
       }
 
       if (
-        preFetchFileData == null ||
-        (Array.isArray(preFetchFileData) && preFetchFileData.length === 0)
+        preFetchedDatas == null ||
+        (Array.isArray(preFetchedDatas) && preFetchedDatas.length === 0)
       )
-        notFetchedFileList = files;
+        newFiles = files;
 
       if (
-        notFetchedFileList != null &&
-        notFetchedFileList.length === 0 &&
-        files.length === preFetchFileData?.length
+        newFiles != null &&
+        newFiles.length === 0 &&
+        files.length === preFetchedDatas?.length
       ) {
         const finalResult: CVDataType[] = [];
 
-        for await (const { filePath, pdfText } of preFetchFileData) {
+        for await (const { filePath, pdfText } of preFetchedDatas) {
           const result = this.matchTagsWithPDFText(input.tags, pdfText);
 
           finalResult.push({
@@ -78,45 +78,52 @@ export class CvHandlerService {
         return finalResult;
       }
 
-      if (notFetchedFileList?.length == 0) return [];
 
-      await PromisePool.withConcurrency(5)
-        .for(notFetchedFileList)
-        .withTaskTimeout(75000)
+      if (newFiles?.length == 0) return [];
+
+
+
+      await PromisePool.withConcurrency(cpus()?.length ?? 8)
+        .for(newFiles).useCorrespondingResults()
+        .withTaskTimeout(75_000)
+        .handleError(handleError => {
+          console.log({ handleError })
+        })
         .process(async (cvData) => {
           if (typeof cvData !== 'string') return;
 
           const pdfResult = await this.handlePDFFile(cvData);
 
           if (pdfResult == undefined) return '';
-          if (preFetchFileData != null)
-            preFetchFileData = [...preFetchFileData, pdfResult];
-          if (preFetchFileData == null) preFetchFileData = [pdfResult];
+          if (preFetchedDatas != null)
+            preFetchedDatas = [...preFetchedDatas, pdfResult];
+          if (preFetchedDatas == null) preFetchedDatas = [pdfResult];
 
-          await this.storeFetchedData(preFetchFileData);
+          await this.storeFetchedData(preFetchedDatas);
         });
 
-      if (preFetchFileData != null && preFetchFileData.length !== 0) {
-        preFetchFileData = preFetchFileData.map((data): CVDataType => {
+      if (preFetchedDatas != null && preFetchedDatas.length !== 0) {
+        preFetchedDatas = preFetchedDatas.map((data): CVDataType => {
           const result = this.matchTagsWithPDFText(input.tags, data.pdfText);
 
           return { ...data, result };
         });
       }
 
-      return preFetchFileData;
+      return preFetchedDatas;
     } catch (error) {
       console.error({ error });
-
       return error;
     }
   }
 
   async storeFetchedData(data: SavedCV[]) {
-    await writeFile(CV_CACHE_PATH, JSON.stringify([...data]));
+    const filterData = data.filter(fetchedData => typeof fetchedData === 'object')
+
+    await writeFile(CV_CACHE_PATH, JSON.stringify([...filterData]));
   }
 
-  async getPreFetchedData() {
+  async getPreFetchedDatas() {
     const isFileExists = this.checkFileExists(CV_CACHE_PATH);
     if (!isFileExists) return;
 
@@ -132,11 +139,12 @@ export class CvHandlerService {
     return existsSync(filePath);
   }
 
-  async removeFromPreFetchedData(
+  async removePreFetchedDatas(
     currentFileList: string[],
     preFetchedData: CVDataType[] | SavedCV[],
   ) {
     const filteredData = preFetchedData.filter((data) => {
+      if (typeof data !== 'object') return
       return currentFileList.some(
         (fileName) => fileName === data.filePath.split('/').at(-1),
       );
@@ -155,17 +163,17 @@ export class CvHandlerService {
     );
   }
 
-  getFileList(dataArray: CVDataType[] | SavedCV[]) {
+  getFiles(dataArray: CVDataType[] | SavedCV[]) {
     return dataArray.flatMap((data) => data.filePath.split('/').at(-1));
   }
 
   async handlePDFFile(fileName: string): Promise<SavedCV> {
     const File_Path = `${STATIC_FILE}\/${fileName}`;
 
-    const isFile = this.verifyIsFile(File_Path);
+    const isFile = this.checkIsFile(File_Path);
     if (!isFile) return;
 
-    const isPDFFile = this.verifyIsPDF(File_Path);
+    const isPDFFile = this.checkIsPDF(File_Path);
     if (!isPDFFile) return;
 
     const pdfText = await this.getPDFText(File_Path);
@@ -176,7 +184,7 @@ export class CvHandlerService {
     };
   }
 
-  async verifyIsFile(filePath: string): Promise<boolean> {
+  async checkIsFile(filePath: string): Promise<boolean> {
     const fileStat = await stat(filePath);
     const isFile = fileStat.isFile();
 
@@ -184,13 +192,13 @@ export class CvHandlerService {
     return false;
   }
 
-  verifyIsPDF(filePath: string): boolean {
+  checkIsPDF(filePath: string): boolean {
     const fileExtension = extname(filePath);
     if (fileExtension === '.pdf') return true;
     return false;
   }
 
-  async getDirectoryFileList(path: string): Promise<string[]> {
+  async getDirectoryFiles(path: string): Promise<string[]> {
     return await readdir(path);
   }
 
@@ -222,12 +230,13 @@ export class CvHandlerService {
     const pdfImage = new PDFImage(filePath, {
       combinedImage: true,
       convertOptions: {
-        '-quality': '100',
+        '-quality': '85',
         '-verbose': '',
-        '-density': '160',
-        '-trim': '',
+        '-density': '200',
+        '-antialias': '',
         '-flatten': '',
-        '-sharpen': '0x1.0',
+        '-sharpen': '0x2.0',
+        '-trim': ''
       },
     });
 
@@ -247,5 +256,10 @@ export class CvHandlerService {
 
   async deleteFileFromStorage(filePath: string): Promise<void> {
     await unlink(filePath);
+  }
+
+  async fetchedFiles() {
+    const data = await this.getPreFetchedDatas()
+    return data
   }
 }

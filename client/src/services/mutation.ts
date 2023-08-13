@@ -6,7 +6,8 @@ export async function filerCVMutation(data: { tags: string[] }) {
   if (serverURL == undefined || serverURL === "")
     throw new Error("Server URL not found!");
 
-  const res = await axios.post(serverURL, data);
+  const SERVER_URL = new URL(serverURL)
 
+  const res = await axios.post(SERVER_URL as unknown as string, data);
   return res;
 }

@@ -14,6 +14,8 @@ export type ResumeType = {
   pdfText: string;
 };
 
+const FETCH_FILES_LINK = new URL("fetch-files", import.meta.env.VITE_SERVER_URL)
+
 type ResumeTypeWithMatchPercentage = ResumeType & {
   matchPercentage: number;
 };
@@ -52,14 +54,14 @@ const sortResult = (
       if (
         resumeA.matchPercentage === resumeB.matchPercentage &&
         calculateTotalTagMatch(resumeA.result) >
-          calculateTotalTagMatch(resumeB.result)
+        calculateTotalTagMatch(resumeB.result)
       )
         return -1;
 
       if (
         resumeA.matchPercentage === resumeB.matchPercentage &&
         calculateTotalTagMatch(resumeA.result) <
-          calculateTotalTagMatch(resumeB.result)
+        calculateTotalTagMatch(resumeB.result)
       )
         return 1;
       return 0;
@@ -77,10 +79,13 @@ function App() {
       if (!("data" in data))
         return displayMessage("data is not found in response");
 
-      if (!Array.isArray(data.data))
-        return displayMessage("typeof data is not array");
+      if (!Array.isArray(data.data)) {
+        console.error({ data: data.data })
+        return displayMessage("typeof data is not array. Check Console");
+      }
       if (data.data.length === 0)
         return displayMessage("Pdf not available in the folder");
+
 
       displayMessage(`${data.data.length} CV Fetched`);
     },
@@ -186,13 +191,25 @@ function App() {
                 />
               </div>
 
-              <button
-                disabled={isLoading}
-                type="submit"
-                className="bg-gray-200 py-2 px-3 rounded-sm text-gray-700 mt-4 w-full disabled:cursor-not-allowed disabled:bg-red-200"
-              >
-                Filter Resume
-              </button>
+
+              <div className="flex flex-col">
+
+                <button
+                  disabled={isLoading}
+                  type="submit"
+                  className="bg-gray-200 py-2 px-3 rounded-sm text-gray-700 mt-4 w-full disabled:cursor-not-allowed disabled:bg-red-200"
+                >
+                  Filter Resume
+                </button>
+
+                <a
+                  href={`${FETCH_FILES_LINK}`} target="_blank"
+                  className="bg-gray-200 py-2 px-3 rounded-sm text-gray-700 mt-4 w-full text-center"
+                >
+                  See Raw JSON
+                </a>
+              </div>
+
             </form>
           </Card>
         </div>
@@ -201,35 +218,35 @@ function App() {
         <div className="grid sm:grid-cols-[repeat(auto-fit,minmax(27rem,32rem))] gap-5 justify-center items-start">
           {((successResume && successResume.length !== 0) ||
             (failedResume && failedResume.length !== 0)) && (
-            <>
-              {/* Pass Result Card */}
+              <>
+                {/* Pass Result Card */}
 
-              <Card
-                title={`${successResume?.length ?? ""} Passed Resume`}
-                icon={<RxCheck className="text-2xl text-white" />}
-                iconBgColor="bg-green-400"
-                isMinHeightEnable
-                isMaxHeightEnable
-              >
-                {successResume?.map((resume: ResumeType, index: number) => (
-                  <ResultCard key={index} {...resume} />
-                ))}
-              </Card>
+                <Card
+                  title={`${successResume?.length ?? ""} Passed Resume`}
+                  icon={<RxCheck className="text-2xl text-white" />}
+                  iconBgColor="bg-green-400"
+                  isMinHeightEnable
+                  isMaxHeightEnable
+                >
+                  {successResume?.map((resume: ResumeType, index: number) => (
+                    <ResultCard key={index} {...resume} />
+                  ))}
+                </Card>
 
-              {/* Failed Result Card */}
-              <Card
-                title={`${failedResume?.length ?? ""} Failed Resume`}
-                icon={<RxCross1 className="text-2xl text-white" />}
-                iconBgColor="bg-red-400"
-                isMinHeightEnable
-                isMaxHeightEnable
-              >
-                {failedResume?.map((resume: ResumeType, index: number) => (
-                  <ResultCard key={index} {...resume} />
-                ))}
-              </Card>
-            </>
-          )}
+                {/* Failed Result Card */}
+                <Card
+                  title={`${failedResume?.length ?? ""} Failed Resume`}
+                  icon={<RxCross1 className="text-2xl text-white" />}
+                  iconBgColor="bg-red-400"
+                  isMinHeightEnable
+                  isMaxHeightEnable
+                >
+                  {failedResume?.map((resume: ResumeType, index: number) => (
+                    <ResultCard key={index} {...resume} />
+                  ))}
+                </Card>
+              </>
+            )}
         </div>
       </div>
     </>
