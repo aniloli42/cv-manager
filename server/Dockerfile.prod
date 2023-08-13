@@ -1,7 +1,7 @@
 FROM node:19.8.1 AS Base
 
 
-FROM Base AS Build
+FROM base AS build
 WORKDIR /server
 COPY package.json yarn.lock* ./
 COPY package.json .
@@ -11,7 +11,7 @@ ENV NODE_ENV production
 RUN yarn build
 
 
-FROM Base AS Prod
+FROM base AS prod
 ENV NODE_ENV production
 WORKDIR /server
 RUN apt update
@@ -25,8 +25,8 @@ RUN apt -y install tesseract-ocr
 RUN apt -y install imagemagick --fix-missing
 RUN sed -i '/disable ghostscript format types/,+6d' /etc/ImageMagick-6/policy.xml
 
-COPY --from=Build /server/node_modules ./node_modules
-COPY --from=Build /server/dist ./dist
+COPY --from=build /server/node_modules ./node_modules
+COPY --from=build /server/dist ./dist
 
 ENTRYPOINT [ "node", "dist/main.js" ]
 EXPOSE ${SERVER_PORT} 
