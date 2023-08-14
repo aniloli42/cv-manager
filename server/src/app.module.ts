@@ -14,4 +14,4 @@ import { CvHandlerModule } from './cv-handler/cv-handler.module';
   ],
   controllers: [AppController],
 })
-export class AppModule {}
+export class AppModule { }
