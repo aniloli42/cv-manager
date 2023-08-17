@@ -1,13 +1,28 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 
-export async function filerCVMutation(data: { tags: string[] }) {
-  const serverURL = import.meta.env.VITE_SERVER_URL;
+export async function filterCVMutation(data: { tags: string[] }) {
+  try {
 
-  if (serverURL == undefined || serverURL === "")
-    throw new Error("Server URL not found!");
+    const serverURL = import.meta.env.VITE_SERVER_URL;
 
-  const SERVER_URL = new URL(serverURL)
+    if (serverURL == undefined || serverURL === "")
+      throw new Error("Server URL not found!");
 
-  const res = await axios.post(SERVER_URL as unknown as string, data);
-  return res;
+    const SERVER_URL = new URL(serverURL)
+
+    const res = await axios.post(SERVER_URL as unknown as string, data, {
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+    return res.data;
+  } catch (e) {
+    if (e instanceof AxiosError) {
+      const error = e.response?.data?.message ?? e.message
+      throw new Error(error)
+    }
+    if (!(e instanceof Error)) throw new Error(`Error not Identified`)
+
+    throw new Error(e.message)
+  }
 }

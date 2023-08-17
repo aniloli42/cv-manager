@@ -2,10 +2,11 @@ import { useMutation } from "@tanstack/react-query";
 import { FormEvent, useMemo, useState } from "react";
 import { FiTerminal } from "react-icons/fi";
 import { RxCheck, RxCross1, RxReload } from "react-icons/rx";
+import { CgDanger } from "react-icons/cg"
 import { toast, ToastContainer } from "react-toastify";
 import Card from "./components/Card";
 import ResultCard from "./components/ResultCard";
-import { filerCVMutation } from "./services/mutation";
+import { filterCVMutation } from "./services/mutation";
 
 export type Result = { tag: string; no_of_match: number };
 export type ResumeType = {
@@ -72,36 +73,14 @@ function App() {
   const [formTags, setFormTags] = useState<string>("");
 
   const { mutate, data, isLoading } = useMutation({
-    mutationFn: filerCVMutation,
-    onSuccess: (data: unknown) => {
-      if (data == null || typeof data !== "object") return null;
-
-      if (!("data" in data))
-        return displayMessage("data is not found in response");
-
-      if (!Array.isArray(data.data)) {
-        console.error({ data: data.data })
-        return displayMessage("typeof data is not array. Check Console");
-      }
-      if (data.data.length === 0)
-        return displayMessage("Pdf not available in the folder");
-
-
-      displayMessage(`${data.data.length} CV Fetched`);
-    },
+    mutationFn: filterCVMutation,
     onError: (error: unknown) => {
-      if (
-        error &&
-        typeof error === "object" &&
-        "message" in error &&
-        typeof error.message === "string"
-      ) {
-        console.error({ error, message: "Error found" });
-        displayMessage(error.message);
-      } else displayMessage("Something Went Wrong!!!");
-      console.error({ error });
+      if (error instanceof Error) displayMessage(error.message)
     },
   });
+
+  const finalData = data?.finalData ?? []
+  const errorsFiles = data?.errors ?? []
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -120,16 +99,10 @@ function App() {
     mutate({ tags });
   };
 
-  const resumesWithPercentage =
-    data &&
-    typeof data === "object" &&
-    "data" in data &&
-    Array.isArray(data.data) &&
-    data.data.length !== 0 &&
-    data.data.map((resume: ResumeType) => {
-      const matchPercentage = handlePercentageFinding(resume.result);
-      return { ...resume, matchPercentage };
-    });
+  const resumesWithPercentage = finalData?.map((resume: ResumeType) => {
+    const matchPercentage = handlePercentageFinding(resume.result);
+    return { ...resume, matchPercentage };
+  });
 
   const successResume = useMemo(() => {
     if (resumesWithPercentage == null || !Array.isArray(resumesWithPercentage))
@@ -168,7 +141,7 @@ function App() {
       )}
       <div className="py-4 sm:py-10 sm:px-4 px-2 flex flex-col gap-2 sm:gap-5 ">
         {/* Card 1 */}
-        <div className="max-w-[24rem]  sm:min-w-[24rem] min-w-full sm:mx-auto">
+        <div className="max-w-[24rem] mb-4  sm:min-w-[24rem] min-w-full sm:mx-auto">
           <Card
             title="Check CV Matching"
             caption=" Paste PDFs in uploads before test"
@@ -220,7 +193,6 @@ function App() {
             (failedResume && failedResume.length !== 0)) && (
               <>
                 {/* Pass Result Card */}
-
                 <Card
                   title={`${successResume?.length ?? ""} Passed Resume`}
                   icon={<RxCheck className="text-2xl text-white" />}
@@ -245,6 +217,21 @@ function App() {
                     <ResultCard key={index} {...resume} />
                   ))}
                 </Card>
+
+                {
+                  !!errorsFiles?.length &&
+                  <Card
+                    title={`${errorsFiles?.length ?? ""} Error Resume`}
+                    icon={<CgDanger className="text-2xl text-white" />}
+                    iconBgColor="bg-red-400"
+                    isMinHeightEnable
+                    isMaxHeightEnable
+                  >
+                    {errorsFiles?.map((file: string, index: number) => (
+                      <ResultCard key={index} file={file} />
+                    ))}
+                  </Card>
+                }
               </>
             )}
         </div>
