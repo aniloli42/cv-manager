@@ -21,5 +21,6 @@ services:
       - SERVER_PORT=${SERVER_PORT}
       - SERVER_ROOT=${SERVER_ROOT}
       - CHOKIDAR_USEPOLLING=true
+      - TZ=Asia/Kathmandu
     volumes:
-      - ../filter-cv-files:/server/uploads
+      - ${CV_FILTER_PATH}:/server/uploads
