@@ -13,12 +13,10 @@ RUN apt -y install tesseract-ocr
 RUN apt -y install imagemagick --fix-missing
 RUN sed -i '/disable ghostscript format types/,+6d' /etc/ImageMagick-6/policy.xml
 
-RUN corepack enable
-RUN corepack prepare pnpm@latest --activate
-
-COPY package.json yarn.lock* ./
-RUN yarn --frozen-lock
+COPY package.json pnpm-lock.yaml ./
+RUN npm i -g pnpm
+RUN pnpm i --frozen-lockfile
 COPY . .
 
-ENTRYPOINT [ "yarn", "dev" ]
+ENTRYPOINT [ "pnpm", "dev" ]
 EXPOSE ${SERVER_PORT}

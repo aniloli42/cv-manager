@@ -1,15 +1,12 @@
-
-import { config } from 'src/common/env.config';
 import { createWorker } from 'tesseract.js';
+import { PDFImage } from 'pdf-image';
 import { HandleFiles } from './handleFiles';
 import { SavedCV } from 'src/cv-handler/cv-handler.service';
+import { config } from 'src/common/env.config';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { PDFImage } = require('pdf-image');
-const handleFiles = new HandleFiles()
+const handleFiles = new HandleFiles();
 
 export class HandlePDF {
-
   async convertPDFToImage(filePath: string): Promise<string> {
     const pdfImage = new PDFImage(filePath, {
       combinedImage: true,
@@ -24,16 +21,14 @@ export class HandlePDF {
       },
     });
 
-    return await pdfImage.convertFile();
+    return pdfImage.convertFile();
   }
 
   async getTextFromImageOCR(imagePath: string): Promise<string> {
     const worker = await createWorker();
     await worker.loadLanguage('eng');
     await worker.initialize('eng');
-    const {
-      data: { text },
-    } = await worker.recognize(imagePath);
+    const { data: { text } } = await worker.recognize(imagePath);
     await worker.terminate();
     return text;
   }
@@ -46,16 +41,13 @@ export class HandlePDF {
     return pdfText;
   }
 
-  async handlePDFFile(fileName: string): Promise<SavedCV> {
-    const File_Path = `${config.STATIC_FILE}\/${fileName}`;
+  async handlePDFFile(fileName: string): Promise<SavedCV | undefined> {
+    const filePath = `${config.STATIC_FILE}/${fileName}`;
 
-    const isFile = handleFiles.checkIsFile(File_Path);
-    if (!isFile) return;
+    if (!await handleFiles.isFile(filePath)) return undefined;
+    if (!handleFiles.isPDF(filePath)) return undefined;
 
-    const isPDFFile = handleFiles.checkIsPDF(File_Path);
-    if (!isPDFFile) return;
-
-    const pdfText = await this.getPDFText(File_Path);
+    const pdfText = await this.getPDFText(filePath);
 
     return {
       filePath: `${config.SERVER_ROOT}/pdf/${fileName}`,

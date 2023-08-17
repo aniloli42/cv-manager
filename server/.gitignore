@@ -4,7 +4,6 @@ node_modules
 uploads
 .env
 fetchedData.txt
-eng.traineddata
 
 # Logs
 logs

@@ -4,5 +4,4 @@ node_modules
 Dockerfile
 Dockerfile.prod
 uploads
-eng.traineddata
 fetchedData.txt

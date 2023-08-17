@@ -1,6 +1,6 @@
 import { readFile, readdir, stat, unlink, writeFile } from "fs/promises";
 import { existsSync } from 'fs';
-import { extname } from "path";
+import { extname, basename } from "path";
 import { CVDataType, SavedCV } from "src/cv-handler/cv-handler.service";
 import { config } from "src/common/env.config";
 import { StringDecoder } from "string_decoder";
@@ -13,57 +13,84 @@ export class HandleFiles {
   }
 
   async getDirectoryFiles(path: string): Promise<string[]> {
-    return await readdir(path);
+    const files = await readdir(path);
+    return files.filter(file => extname(file) === '.pdf')
   }
 
-  async checkIsFile(filePath: string): Promise<boolean> {
+  async isFile(filePath: string): Promise<boolean> {
     const fileStat = await stat(filePath);
-    const isFile = fileStat.isFile();
-
-    if (isFile) return true;
-    return false;
+    return fileStat.isFile();
   }
 
-  checkIsPDF(filePath: string): boolean {
+  isPDF(filePath: string): boolean {
     const fileExtension = extname(filePath);
-    if (fileExtension === '.pdf') return true;
-    return false;
+    return fileExtension === '.pdf';
   }
 
-  async storeFetchedData(data: SavedCV[]) {
+  async storeFetchedData(data: SavedCV[]): Promise<void> {
     const filterData = data.filter(
-      (fetchedData) => typeof fetchedData === 'object',
+      (fetchedData): fetchedData is SavedCV => typeof fetchedData === 'object'
     );
-
 
     await writeFile(config.CV_CACHE_PATH, JSON.stringify([...filterData]));
   }
 
-  async getSavedDatas() {
-    const isFileExists = this.checkFileExists(config.CV_CACHE_PATH);
-    if (!isFileExists) return;
+  async getSavedDatas(): Promise<SavedCV[] | undefined> {
+
+    if (!this.checkFileExists(config.CV_CACHE_PATH)) return undefined;
 
     const dataBuffer = await readFile(config.CV_CACHE_PATH);
     const stringDecode = new StringDecoder();
 
     const preFetchedData = stringDecode.write(dataBuffer);
 
-    return JSON.parse(preFetchedData);
+    return JSON.parse(preFetchedData) as SavedCV[];
   }
+
+  async getErrorFiles(): Promise<string[]> {
+    if (!this.checkFileExists(config.ERROR_FILE_PATH)) return undefined;
+
+    const dataBuffer = await readFile(config.ERROR_FILE_PATH);
+    const stringDecode = new StringDecoder();
+
+    const errorFiles = stringDecode.write(dataBuffer);
+
+    return JSON.parse(errorFiles);
+  }
+
+  async storeErrorFile(file: string): Promise<void> {
+    const errorFiles = await this.getErrorFiles()
+
+    await writeFile(config.ERROR_FILE_PATH, JSON.stringify(
+      errorFiles ?
+        [...errorFiles, file] : [file]));
+  }
+
+  async storeErrorFiles(files: string[]): Promise<void> {
+    await writeFile(config.ERROR_FILE_PATH, JSON.stringify(files));
+  }
+
+  async removeErrorFile(file: string): Promise<string[]> {
+    const errorFiles = await this.getErrorFiles()
+
+    if (!errorFiles?.length) return []
+    const afterRemoveFiles = errorFiles.filter(errorFile => file !== errorFile)
+    await this.storeErrorFiles(afterRemoveFiles)
+
+    return afterRemoveFiles
+  }
+
 
   checkFileExists(filePath: string): boolean {
     return existsSync(filePath);
   }
 
-  async removeSavedDatas(
-    files: string[],
-    fetchedDatas: CVDataType[] | SavedCV[],
-  ) {
-    const filteredData = fetchedDatas.filter((data) => {
-      if (typeof data !== 'object') return;
+  async removeSavedDatas(files: string[], fetchedDatas: (CVDataType | SavedCV)[]): Promise<void> {
+    const filteredData = fetchedDatas.filter((data): data is SavedCV => {
+      if (typeof data !== 'object') return false;
 
       return files.some(
-        (fileName) => fileName === data.filePath.split('/').at(-1),
+        (fileName) => fileName === basename(data.filePath)
       );
     });
 
