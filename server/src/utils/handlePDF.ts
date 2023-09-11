@@ -28,7 +28,9 @@ export class HandlePDF {
     const worker = await createWorker();
     await worker.loadLanguage('eng');
     await worker.initialize('eng');
-    const { data: { text } } = await worker.recognize(imagePath);
+    const {
+      data: { text },
+    } = await worker.recognize(imagePath);
     await worker.terminate();
     return text;
   }
@@ -44,7 +46,7 @@ export class HandlePDF {
   async handlePDFFile(fileName: string): Promise<SavedCV | undefined> {
     const filePath = `${config.STATIC_FILE}/${fileName}`;
 
-    if (!await handleFiles.isFile(filePath)) return undefined;
+    if (!(await handleFiles.isFile(filePath))) return undefined;
     if (!handleFiles.isPDF(filePath)) return undefined;
 
     const pdfText = await this.getPDFText(filePath);

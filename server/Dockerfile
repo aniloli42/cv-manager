@@ -1,22 +1,21 @@
-FROM node:19.8.1 
-
+FROM node:19.8.1-alpine3.17
+ENV NODE_ENV production
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
 WORKDIR /server
 
-RUN apt update
-RUN apt -y upgrade
+RUN apk add poppler-utils
+RUN apk add ghostscript
+# RUN apk add tesseract-ocr
+RUN apk add imagemagick
 
-# Adding packages for pdf ocr
-RUN apt -y install pdftk
-RUN apt -y install poppler-utils
-RUN apt -y install ghostscript
-RUN apt -y install tesseract-ocr
-RUN apt -y install imagemagick --fix-missing
-RUN sed -i '/disable ghostscript format types/,+6d' /etc/ImageMagick-6/policy.xml
 
 COPY package.json pnpm-lock.yaml ./
-RUN npm i -g pnpm
-RUN pnpm i --frozen-lockfile
-COPY . .
+RUN pnpm i 
+COPY .  .
 
+
+EXPOSE ${SERVER_PORT} 
 ENTRYPOINT [ "pnpm", "dev" ]
-EXPOSE ${SERVER_PORT}
+

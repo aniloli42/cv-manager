@@ -1,32 +1,26 @@
-FROM node:19.8.1 AS base
+FROM node:19.8.1-alpine3.17 AS base
+ENV NODE_ENV production
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+WORKDIR /server
+COPY .  .
+
+FROM base AS prod-deps
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
 
 FROM base AS build
-WORKDIR /server
-COPY package.json pnpm-lock.yaml ./
-RUN npm i -g pnpm
-RUN pnpm i --frozen-lockfile
-COPY . .
-ENV NODE_ENV production
-RUN pnpm build
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+RUN pnpm run build
 
 
-FROM base AS prod
-ENV NODE_ENV production
-WORKDIR /server
-RUN apt update
-RUN apt -y upgrade
+FROM base
+RUN apk add poppler-utils
+RUN apk add ghostscript
+RUN apk add imagemagick
 
-# Adding packages for pdf ocr
-RUN apt -y install pdftk
-RUN apt -y install poppler-utils
-RUN apt -y install ghostscript
-RUN apt -y install tesseract-ocr
-RUN apt -y install imagemagick --fix-missing
-RUN sed -i '/disable ghostscript format types/,+6d' /etc/ImageMagick-6/policy.xml
-
-COPY --from=build /server/node_modules ./node_modules
-COPY --from=build /server/eng.traineddata ./eng.traineddata
+COPY --from=prod-deps /server/node_modules ./node_modules
 COPY --from=build /server/dist ./dist
 
-ENTRYPOINT [ "node", "dist/main.js" ]
 EXPOSE ${SERVER_PORT} 
+ENTRYPOINT [ "node", "dist/main.js" ]

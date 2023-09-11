@@ -8,12 +8,16 @@ export class CvHandlerController {
 
   @Post('cv')
   async handleCVMatching(@Body() input: CVInputDTO) {
-      return await this.cvHandlerService.handleCVMatching(input);
-
+    return await this.cvHandlerService.handleCVMatching(input);
   }
 
   @Get('fetch-files')
-  async cleanError(){
-    return await this.cvHandlerService.fetchedFiles()
+  async fetchFiles() {
+    return await this.cvHandlerService.fetchedFiles();
+  }
+
+  @Post('clean-errors')
+  async cleanErros() {
+    return await this.cvHandlerService.cleanErrors();
   }
 }
