@@ -185,7 +185,7 @@ export class CvHandlerService {
 
   // Expose a method to retrieve fetched files
   async fetchedFiles() {
-    return this.handleFiles.getSavedDatas();
+    return await this.handleFiles.getSavedDatas();
   }
 
   async cleanErrors() {

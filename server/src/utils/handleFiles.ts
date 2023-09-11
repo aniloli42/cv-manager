@@ -4,6 +4,7 @@ import { extname, basename } from 'path';
 import { CVDataType, SavedCV } from 'src/cv-handler/cv-handler.service';
 import { config } from 'src/common/env.config';
 import { StringDecoder } from 'string_decoder';
+import { InternalServerErrorException } from '@nestjs/common';
 
 export class HandleFiles {
   constructor() {}
@@ -36,14 +37,18 @@ export class HandleFiles {
   }
 
   async getSavedDatas(): Promise<SavedCV[] | undefined> {
-    if (!this.checkFileExists(config.CV_CACHE_PATH)) return undefined;
+    try {
+      if (!this.checkFileExists(config.CV_CACHE_PATH)) return;
 
-    const dataBuffer = await readFile(config.CV_CACHE_PATH);
-    const stringDecode = new StringDecoder();
+      const dataBuffer = await readFile(config.CV_CACHE_PATH);
+      const stringDecode = new StringDecoder();
 
-    const preFetchedData = stringDecode.write(dataBuffer);
+      const preFetchedData = stringDecode.write(dataBuffer);
 
-    return JSON.parse(preFetchedData) as SavedCV[];
+      return JSON.parse(preFetchedData) as SavedCV[];
+    } catch (error) {
+      throw new InternalServerErrorException(`Stored File Corrupted`);
+    }
   }
 
   async getErrorFiles(): Promise<string[]> {
@@ -101,6 +106,7 @@ export class HandleFiles {
 
   async cleanFile() {
     await writeFile(config.CV_CACHE_PATH, '[]');
+
     return `SuccessFully Cleaned`;
   }
 }
