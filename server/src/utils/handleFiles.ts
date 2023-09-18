@@ -62,7 +62,10 @@ export class HandleFiles {
 
       return JSON.parse(errorFiles)
     } catch (error: unknown) {
-      console.log('[Error File] Fetch Error:', error)
+      if (error instanceof Error)
+        console.error('[Error] Error Files:', error.message)
+
+      return []
     }
   }
 
@@ -110,6 +113,7 @@ export class HandleFiles {
 
   async cleanFile() {
     await writeFile(config.CV_CACHE_PATH, '[]')
+    await writeFile(config.ERROR_FILE_PATH, '[]')
 
     return `SuccessFully Cleaned`
   }

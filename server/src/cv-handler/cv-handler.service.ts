@@ -3,13 +3,12 @@ import {
   InternalServerErrorException,
   NotFoundException
 } from '@nestjs/common'
-import { config } from 'src/common/env.config'
-import { cpus } from 'os'
-import { unlink } from 'node:fs/promises'
-import { CVInputDTO } from './dtos/body-input.input'
 import { PromisePool } from '@supercharge/promise-pool'
+import { unlink } from 'node:fs/promises'
+import { config } from 'src/common/env.config'
 import { HandleFiles } from 'src/utils/handleFiles'
 import { HandlePDF } from 'src/utils/handlePDF'
+import { CVInputDTO } from './dtos/body-input.input'
 
 export type MatchTagType = {
   tag: string
@@ -39,32 +38,30 @@ export class CvHandlerService {
       let files = await this.handleFiles.getDirectoryFiles(config.STATIC_FILE)
       let errorFiles = await this.handleFiles.getErrorFiles()
 
-      if (!!errorFiles?.length && !!files?.length) {
+      if (errorFiles?.length !== 0 && files?.length !== 0) {
         errorFiles = errorFiles.filter((errorFile) => files.includes(errorFile))
 
         await this.handleFiles.storeErrorFiles(errorFiles)
       }
 
-      if (!!files?.length)
+      if (files?.length !== 0)
         files = files.filter((file) => !errorFiles?.includes(file))
 
       let savedDatas = await this.handleFiles.getSavedDatas()
 
-      if (!savedDatas?.length && !files?.length)
-        throw new NotFoundException(`Pdf not found to filter`)
-
-      if (!!savedDatas?.length && !files?.length) {
+      if (savedDatas?.length === 0 && files?.length === 0) {
+        await unlink(config.ERROR_FILE_PATH)
         await unlink(config.CV_CACHE_PATH)
         throw new NotFoundException(`Pdf not found to filter`)
       }
 
-      if (!!savedDatas?.length && !!files?.length)
-        savedDatas = await this.resolveDanglingFile(files, savedDatas)
+      if (savedDatas?.length !== 0 && files?.length !== 0)
+        savedDatas = await this.removeExtraData(files, savedDatas)
 
       const newFiles = await this.getNewFiles(files, savedDatas)
 
       if (newFiles?.length === 0) {
-        const finalData = await this.processSavedCVs(savedDatas, input.tags)
+        const finalData = await this.processTagsWithPDF(savedDatas, input.tags)
         const errors = await this.handleFiles.getErrorFiles()
         return {
           finalData,
@@ -74,7 +71,7 @@ export class CvHandlerService {
 
       savedDatas = await this.handleNewPDFs(newFiles, savedDatas)
 
-      const finalData = await this.processSavedCVs(savedDatas, input.tags)
+      const finalData = await this.processTagsWithPDF(savedDatas, input.tags)
       const errors = await this.handleFiles.getErrorFiles()
 
       return {
@@ -82,16 +79,15 @@ export class CvHandlerService {
         errors
       }
     } catch (err) {
-      console.error(err)
       throw new InternalServerErrorException(
         err.message ?? 'An error occurred while processing CVs.'
       )
     }
   }
 
-  private async resolveDanglingFile(allFiles: string[], savedDatas: SavedCV[]) {
+  private async removeExtraData(files: string[], savedDatas: SavedCV[]) {
     const filteredFiles = savedDatas.filter((data) =>
-      allFiles.includes(this.extractFileName(data.filePath))
+      files.includes(this.extractFileName(data.filePath))
     )
 
     await this.handleFiles.storeFetchedData(filteredFiles)
@@ -115,7 +111,7 @@ export class CvHandlerService {
     return parts[parts.length - 1]
   }
 
-  private async processSavedCVs(savedDatas: SavedCV[], tags: string[]) {
+  private async processTagsWithPDF(savedDatas: SavedCV[], tags: string[]) {
     const processedCVs: CVDataType[] = []
     if (savedDatas?.length === 0) throw new Error(`Data not found to process`)
 
@@ -150,16 +146,12 @@ export class CvHandlerService {
 
   private async handleNewPDFs(newFiles: string[], savedDatas: SavedCV[]) {
     const storedFiles = !!savedDatas?.length ? [...savedDatas] : []
-    await PromisePool.withConcurrency(cpus()?.length ?? 8)
+    await PromisePool.withConcurrency(6)
       .for(newFiles)
       .withTaskTimeout(150_000)
-      .onTaskStarted((file, pool) =>
-        console.log({
-          _file: file,
-          _current: pool.processedCount(),
-          _time: new Date().toISOString()
-        })
-      )
+      .onTaskStarted((file) => {
+        console.log(`[${new Date().toISOString()}]: ${file}`)
+      })
       .handleError(
         async (error, file) => await this.handleErrorFile(error, file)
       )
@@ -176,7 +168,7 @@ export class CvHandlerService {
   }
 
   async handleErrorFile(error: Error, file: string) {
-    console.log({ _message: error.message, _file: file })
+    console.error(`[Error]: ${file}\n[Message]: ${error.message}`)
     await this.handleFiles.storeErrorFile(file)
   }
 
