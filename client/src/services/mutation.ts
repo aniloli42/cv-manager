@@ -2,11 +2,12 @@ import axios, { AxiosError } from 'axios'
 
 const serverURL = import.meta.env.VITE_SERVER_URL
 if (!serverURL) throw new Error('Server URL not found!')
-const filterCVURL = new URL(serverURL)
+const apiURL = new URL(serverURL)
 
 export async function filterCVMutation(data: { tags: string[] }) {
   try {
-    const res = await axios.post(filterCVURL.href, data, {
+    const cvFilterURL = new URL('/cv', apiURL)
+    const res = await axios.post(cvFilterURL.href, data, {
       headers: {
         'Content-Type': 'application/json'
       }
@@ -25,7 +26,7 @@ export async function filterCVMutation(data: { tags: string[] }) {
 
 export async function cleanFileMutation() {
   try {
-    const cleanFileURL = new URL('clean-errors', filterCVURL)
+    const cleanFileURL = new URL('clean-errors', apiURL)
     const res = await axios.post(cleanFileURL.href)
     return res.data
   } catch (e) {
