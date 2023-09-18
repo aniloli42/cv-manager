@@ -1,7 +1,7 @@
 version: "3"
 services:
   dev_web:
-    container_name: dev_web
+    container_name: filter_dev_web
     build:
       context: client
       dockerfile: Dockerfile
@@ -10,19 +10,19 @@ services:
     environment:
       - VITE_SERVER_URL=${VITE_SERVER_URL}
     volumes:
-      - ${DEV_CLIENT_SRC}:/app/src
+      - ${CLIENT_SRC_PATH}:/app/src
 
   dev_backend:
-    container_name: dev_backend
+    container_name: filter_dev_backend
     build:
       context: server
       dockerfile: Dockerfile
     ports:
-      - ${SERVER_PORT}:5000
+      - ${PORT}:5000
     environment:
-      - SERVER_PORT=${SERVER_PORT}
-      - SERVER_ROOT=${SERVER_ROOT}
+      - PORT=${PORT}
+      - SERVER_URL=${SERVER_URL}
       - TZ=Asia/Kathmandu
     volumes:
       - ./server/src:/server/src:ro
-      - ${CV_FILTER_PATH}:/server/uploads:rw
+      - ${CV_PATH}:/server/uploads:rw
