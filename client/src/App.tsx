@@ -77,7 +77,7 @@ function App() {
     mutationFn: filterCVMutation,
     onError: (error: unknown) => {
       if (error instanceof Error) displayMessage(error.message)
-    },
+    }
   })
 
   const { mutate: cleanMutate, isLoading: isCleaning } = useMutation({
@@ -87,7 +87,7 @@ function App() {
     },
     onError: (error: unknown) => {
       console.error(error)
-    },
+    }
   })
 
   const finalData = data?.finalData ?? []

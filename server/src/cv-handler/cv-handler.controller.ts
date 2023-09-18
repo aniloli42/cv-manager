@@ -1,6 +1,6 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
-import { CvHandlerService } from './cv-handler.service';
-import { CVInputDTO } from './dtos/body-input.input';
+import { Body, Controller, Get, Post } from '@nestjs/common'
+import { CvHandlerService } from './cv-handler.service'
+import { CVInputDTO } from './dtos/body-input.input'
 
 @Controller()
 export class CvHandlerController {
@@ -8,16 +8,16 @@ export class CvHandlerController {
 
   @Post('cv')
   async handleCVMatching(@Body() input: CVInputDTO) {
-    return await this.cvHandlerService.handleCVMatching(input);
+    return await this.cvHandlerService.handleCVMatching(input)
   }
 
   @Get('fetch-files')
   async fetchFiles() {
-    return await this.cvHandlerService.fetchedFiles();
+    return await this.cvHandlerService.fetchedFiles()
   }
 
   @Post('clean-errors')
   async cleanErros() {
-    return await this.cvHandlerService.cleanErrors();
+    return await this.cvHandlerService.cleanErrors()
   }
 }

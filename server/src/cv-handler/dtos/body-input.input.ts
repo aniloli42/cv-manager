@@ -1,7 +1,7 @@
-import { IsArray, IsNotEmpty } from 'class-validator';
+import { IsArray, IsNotEmpty } from 'class-validator'
 
 export class CVInputDTO {
   @IsArray()
   @IsNotEmpty()
-  tags: string[];
+  tags: string[]
 }

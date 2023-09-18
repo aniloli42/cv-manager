@@ -8,8 +8,8 @@ export async function filterCVMutation(data: { tags: string[] }) {
   try {
     const res = await axios.post(filterCVURL.href, data, {
       headers: {
-        'Content-Type': 'application/json',
-      },
+        'Content-Type': 'application/json'
+      }
     })
     return res.data
   } catch (e) {

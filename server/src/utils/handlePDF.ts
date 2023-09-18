@@ -1,13 +1,13 @@
-import { createWorker } from 'tesseract.js';
-import { PDFImage } from 'pdf-image';
-import { HandleFiles } from './handleFiles';
-import { SavedCV } from 'src/cv-handler/cv-handler.service';
-import { config } from 'src/common/env.config';
+import { createWorker } from 'tesseract.js'
+import { PDFImage } from 'pdf-image'
+import { HandleFiles } from './handleFiles'
+import { SavedCV } from 'src/cv-handler/cv-handler.service'
+import { config } from 'src/common/env.config'
 
-const handleFiles = new HandleFiles();
+const handleFiles = new HandleFiles()
 
 export class HandlePDF {
-  async convertPDFToImage(filePath: string): Promise<string> {
+  async convertPDFImage(filePath: string): Promise<string> {
     const pdfImage = new PDFImage(filePath, {
       combinedImage: true,
       convertOptions: {
@@ -17,43 +17,43 @@ export class HandlePDF {
         '-antialias': '',
         '-flatten': '',
         '-sharpen': '0x2.0',
-        '-trim': '',
-      },
-    });
+        '-trim': ''
+      }
+    })
 
-    return pdfImage.convertFile();
+    return pdfImage.convertFile()
   }
 
-  async getTextFromImageOCR(imagePath: string): Promise<string> {
-    const worker = await createWorker();
-    await worker.loadLanguage('eng');
-    await worker.initialize('eng');
+  async getImageOCRText(imagePath: string): Promise<string> {
+    const worker = await createWorker()
+    await worker.loadLanguage('eng')
+    await worker.initialize('eng')
     const {
-      data: { text },
-    } = await worker.recognize(imagePath);
-    await worker.terminate();
-    return text;
+      data: { text }
+    } = await worker.recognize(imagePath)
+    await worker.terminate()
+    return text
   }
 
   async getPDFText(filePath: string): Promise<string> {
-    const imagePath = await this.convertPDFToImage(filePath);
-    const pdfText = await this.getTextFromImageOCR(imagePath);
+    const imagePath = await this.convertPDFImage(filePath)
+    const pdfText = await this.getImageOCRText(imagePath)
 
-    await handleFiles.deleteFile(imagePath);
-    return pdfText;
+    await handleFiles.deleteFile(imagePath)
+    return pdfText
   }
 
-  async handlePDFFile(fileName: string): Promise<SavedCV | undefined> {
-    const filePath = `${config.STATIC_FILE}/${fileName}`;
+  async handlePDF(fileName: string): Promise<SavedCV | undefined> {
+    const filePath = `${config.STATIC_FILE}/${fileName}`
 
-    if (!(await handleFiles.isFile(filePath))) return undefined;
-    if (!handleFiles.isPDF(filePath)) return undefined;
+    if (!(await handleFiles.isFile(filePath))) return undefined
+    if (!handleFiles.isPDF(filePath)) return undefined
 
-    const pdfText = await this.getPDFText(filePath);
+    const pdfText = await this.getPDFText(filePath)
 
     return {
       filePath: `${config.SERVER_URL}/pdf/${fileName}`,
-      pdfText,
-    };
+      pdfText
+    }
   }
 }

@@ -1,6 +1,6 @@
-import { Result } from "../App";
+import { Result } from '../App'
 
-type TagProps = Result & {};
+type TagProps = Result & {}
 
 const Tag = ({ no_of_match, tag }: TagProps) => {
   return (
@@ -8,7 +8,7 @@ const Tag = ({ no_of_match, tag }: TagProps) => {
       <p className="text-gray-100 text-xs px-2 py-0.5">{tag}</p>
       <p className="bg-gray-100 text-xs py-0.5 px-2">{no_of_match}</p>
     </div>
-  );
-};
+  )
+}
 
-export default Tag;
+export default Tag

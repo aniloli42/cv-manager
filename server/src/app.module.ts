@@ -1,17 +1,17 @@
-import { Module } from '@nestjs/common';
-import { ServeStaticModule } from '@nestjs/serve-static';
-import { join } from 'path';
-import { AppController } from './app.controller';
-import { CvHandlerModule } from './cv-handler/cv-handler.module';
+import { Module } from '@nestjs/common'
+import { ServeStaticModule } from '@nestjs/serve-static'
+import { join } from 'path'
+import { AppController } from './app.controller'
+import { CvHandlerModule } from './cv-handler/cv-handler.module'
 
 @Module({
   imports: [
     CvHandlerModule,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'uploads'),
-      serveRoot: '/pdf',
-    }),
+      serveRoot: '/pdf'
+    })
   ],
-  controllers: [AppController],
+  controllers: [AppController]
 })
-export class AppModule { }
+export class AppModule {}

@@ -1,9 +1,9 @@
-import { Module } from '@nestjs/common';
-import { CvHandlerController } from './cv-handler.controller';
-import { CvHandlerService } from './cv-handler.service';
+import { Module } from '@nestjs/common'
+import { CvHandlerController } from './cv-handler.controller'
+import { CvHandlerService } from './cv-handler.service'
 
 @Module({
   controllers: [CvHandlerController],
-  providers: [CvHandlerService],
+  providers: [CvHandlerService]
 })
 export class CvHandlerModule {}
