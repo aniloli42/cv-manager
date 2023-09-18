@@ -52,7 +52,7 @@ export class HandlePDF {
     const pdfText = await this.getPDFText(filePath);
 
     return {
-      filePath: `${config.SERVER_ROOT}/pdf/${fileName}`,
+      filePath: `${config.SERVER_URL}/pdf/${fileName}`,
       pdfText,
     };
   }

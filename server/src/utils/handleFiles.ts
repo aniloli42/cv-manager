@@ -30,7 +30,7 @@ export class HandleFiles {
 
   async storeFetchedData(data: SavedCV[]): Promise<void> {
     const filterData = data.filter(
-      (fetchedData): fetchedData is SavedCV => typeof fetchedData === 'object',
+      (fetchedData) => typeof fetchedData === 'object',
     );
 
     await writeFile(config.CV_CACHE_PATH, JSON.stringify([...filterData]));
