@@ -64,7 +64,7 @@ export class HandleFiles {
     } catch (error: unknown) {
       if (error instanceof Error)
         console.error('[Error] Error Files:', error.message)
-
+      await unlink(config.ERROR_FILE_PATH)
       return []
     }
   }
