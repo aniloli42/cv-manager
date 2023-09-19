@@ -71,11 +71,9 @@ export class HandleFiles {
 
   async storeErrorFile(file: string): Promise<void> {
     const errorFiles = await this.getErrorFiles()
+    const storeFile = errorFiles?.length !== 0 ? [...errorFiles, file] : [file]
 
-    await writeFile(
-      config.ERROR_FILE_PATH,
-      JSON.stringify(errorFiles ? [...errorFiles, file] : [file])
-    )
+    await writeFile(config.ERROR_FILE_PATH, JSON.stringify(storeFile))
   }
 
   async storeErrorFiles(files: string[]): Promise<void> {
