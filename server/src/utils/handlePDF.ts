@@ -1,8 +1,7 @@
-import { createWorker } from 'tesseract.js'
 import { PDFImage } from 'pdf-image'
-import { HandleFiles } from './handleFiles'
-import { SavedCV } from 'src/cv-handler/cv-handler.service'
 import { config } from 'src/common/env.config'
+import { createWorker } from 'tesseract.js'
+import { HandleFiles } from './handleFiles'
 
 const handleFiles = new HandleFiles()
 
@@ -43,11 +42,11 @@ export class HandlePDF {
     return pdfText
   }
 
-  async handlePDF(fileName: string): Promise<SavedCV | undefined> {
+  async handlePDF(fileName: string) {
     const filePath = `${config.STATIC_FILE}/${fileName}`
 
-    if (!(await handleFiles.isFile(filePath))) return undefined
-    if (!handleFiles.isPDF(filePath)) return undefined
+    if (!(await handleFiles.isFile(filePath))) return
+    if (!handleFiles.isPDF(filePath)) return
 
     const pdfText = await this.getPDFText(filePath)
 

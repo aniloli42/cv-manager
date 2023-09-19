@@ -1,4 +1,4 @@
-import axios, { AxiosError } from 'axios'
+import axios, { AxiosError, isAxiosError } from 'axios'
 
 const serverURL = import.meta.env.VITE_SERVER_URL
 if (!serverURL) throw new Error('Server URL not found!')
@@ -14,13 +14,8 @@ export async function filterCVMutation(data: { tags: string[] }) {
     })
     return res.data
   } catch (e) {
-    if (e instanceof AxiosError) {
-      const error = e.response?.data?.message ?? e.message
-      throw new Error(error)
-    }
-    if (!(e instanceof Error)) throw new Error(`Error not Identified`)
-
-    throw new Error(e.message)
+    if (isAxiosError(e)) return console.error(e.response?.data ?? e.message)
+    if (e instanceof Error) throw new Error(e.message ?? 'Error not found')
   }
 }
 

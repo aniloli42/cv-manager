@@ -1,4 +1,4 @@
-version: "3"
+version: '3'
 services:
   web:
     container_name: filter_web
@@ -7,7 +7,9 @@ services:
       dockerfile: Dockerfile.prod
     restart: on-failure
     ports:
-      - "80:80"
+      - '80:80'
+    environment:
+      - VITE_SERVER_URL=${VITE_SERVER_URL}
 
   backend:
     container_name: filter_backend

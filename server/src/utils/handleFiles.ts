@@ -1,10 +1,16 @@
-import { readFile, readdir, stat, unlink, writeFile } from 'fs/promises'
-import { existsSync } from 'fs'
-import { extname, basename } from 'path'
-import { CVDataType, SavedCV } from 'src/cv-handler/cv-handler.service'
+import {
+  readFile,
+  readdir,
+  stat,
+  unlink,
+  writeFile,
+  access,
+  constants
+} from 'node:fs/promises'
+import { basename, extname } from 'path'
 import { config } from 'src/common/env.config'
+import { CVDataType, SavedCV } from 'src/cv-handler/cv-handler.service'
 import { StringDecoder } from 'string_decoder'
-import { InternalServerErrorException } from '@nestjs/common'
 
 export class HandleFiles {
   constructor() {}
@@ -38,7 +44,8 @@ export class HandleFiles {
 
   async getSavedDatas(): Promise<SavedCV[] | undefined> {
     try {
-      if (!this.checkFileExists(config.CV_CACHE_PATH)) return
+      const isFileExists = await this.isFileExists(config.CV_CACHE_PATH)
+      if (!isFileExists) return []
 
       const dataBuffer = await readFile(config.CV_CACHE_PATH)
       const stringDecode = new StringDecoder()
@@ -47,13 +54,16 @@ export class HandleFiles {
 
       return JSON.parse(preFetchedData) as SavedCV[]
     } catch (error) {
-      throw new InternalServerErrorException(`Stored File Corrupted`)
+      console.error('[Stored File] ', error)
+      await unlink(config.CV_CACHE_PATH)
+      return []
     }
   }
 
   async getErrorFiles(): Promise<string[]> {
     try {
-      if (!this.checkFileExists(config.ERROR_FILE_PATH)) return undefined
+      const isFileExists = await this.isFileExists(config.ERROR_FILE_PATH)
+      if (!isFileExists) return []
 
       const dataBuffer = await readFile(config.ERROR_FILE_PATH)
       const stringDecode = new StringDecoder()
@@ -62,8 +72,7 @@ export class HandleFiles {
 
       return JSON.parse(errorFiles)
     } catch (error: unknown) {
-      if (error instanceof Error)
-        console.error('[Error] Error Files:', error.message)
+      if (error instanceof Error) console.error('[Error Files] ', error.message)
       await unlink(config.ERROR_FILE_PATH)
       return []
     }
@@ -71,7 +80,7 @@ export class HandleFiles {
 
   async storeErrorFile(file: string): Promise<void> {
     const errorFiles = await this.getErrorFiles()
-    const storeFile = errorFiles?.length !== 0 ? [...errorFiles, file] : [file]
+    const storeFile = !!errorFiles?.length ? [...errorFiles, file] : [file]
 
     await writeFile(config.ERROR_FILE_PATH, JSON.stringify(storeFile))
   }
@@ -92,10 +101,6 @@ export class HandleFiles {
     return afterRemoveFiles
   }
 
-  checkFileExists(filePath: string): boolean {
-    return existsSync(filePath)
-  }
-
   async removeSavedDatas(
     files: string[],
     fetchedDatas: (CVDataType | SavedCV)[]
@@ -107,6 +112,15 @@ export class HandleFiles {
     })
 
     await writeFile(config.CV_CACHE_PATH, JSON.stringify(filteredData))
+  }
+
+  async isFileExists(filePath: string) {
+    try {
+      await access(filePath, constants.F_OK)
+      return true
+    } catch (error: unknown) {
+      return false
+    }
   }
 
   async cleanFile() {

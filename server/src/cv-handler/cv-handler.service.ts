@@ -38,29 +38,26 @@ export class CvHandlerService {
       let files = await this.handleFiles.getDirectoryFiles(config.STATIC_FILE)
       let errorFiles = await this.handleFiles.getErrorFiles()
 
-      if (errorFiles?.length !== 0 && files?.length !== 0) {
-        errorFiles = errorFiles.filter((errorFile) => files.includes(errorFile))
+      if (!!errorFiles?.length && !!files?.length) {
+        errorFiles = errorFiles?.filter((errorFile) =>
+          files.includes(errorFile)
+        )
+        files = files.filter((file) => !errorFiles?.includes(file))
 
         await this.handleFiles.storeErrorFiles(errorFiles)
       }
 
-      if (files?.length !== 0)
-        files = files.filter((file) => !errorFiles?.includes(file))
-
       let savedDatas = await this.handleFiles.getSavedDatas()
 
-      if (savedDatas?.length === 0 && files?.length === 0) {
-        await unlink(config.ERROR_FILE_PATH)
-        await unlink(config.CV_CACHE_PATH)
+      if (!savedDatas?.length && !files?.length)
         throw new NotFoundException(`Pdf not found to filter`)
-      }
 
-      if (savedDatas?.length !== 0 && files?.length !== 0)
+      if (!!savedDatas?.length && !!files?.length)
         savedDatas = await this.removeExtraData(files, savedDatas)
 
       const newFiles = await this.getNewFiles(files, savedDatas)
 
-      if (newFiles?.length === 0) {
+      if (!newFiles?.length) {
         const finalData = await this.processTagsWithPDF(savedDatas, input.tags)
         const errors = await this.handleFiles.getErrorFiles()
         return {
@@ -146,9 +143,9 @@ export class CvHandlerService {
 
   private async handleNewPDFs(newFiles: string[], savedDatas: SavedCV[]) {
     const storedFiles = !!savedDatas?.length ? [...savedDatas] : []
-    await PromisePool.withConcurrency(6)
-      .for(newFiles)
-      .withTaskTimeout(150_000)
+    await PromisePool.for(newFiles)
+      .withConcurrency(10)
+      .withTaskTimeout(300_000)
       .onTaskStarted((file) => {
         console.log(`[${new Date().toISOString()}]: ${file}`)
       })
@@ -157,9 +154,8 @@ export class CvHandlerService {
       )
       .process(async (cvData) => {
         if (typeof cvData !== 'string') return
-
         const pdfResult = await this.handlePDF.handlePDF(cvData)
-        if (pdfResult == undefined) return ''
+        if (!pdfResult) return
 
         storedFiles.push(pdfResult)
         await this.handleFiles.storeFetchedData(storedFiles)
