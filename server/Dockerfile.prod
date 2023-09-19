@@ -1,4 +1,7 @@
 FROM node:19.8.1-alpine3.17 AS base
+RUN apk add poppler-utils
+RUN apk add ghostscript
+RUN apk add imagemagick
 ENV NODE_ENV production
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
@@ -15,12 +18,8 @@ RUN pnpm run build
 
 
 FROM base
-RUN apk add poppler-utils
-RUN apk add ghostscript
-RUN apk add imagemagick
-
 COPY --from=prod-deps /server/node_modules ./node_modules
 COPY --from=build /server/dist ./dist
 
-EXPOSE ${SERVER_PORT} 
 ENTRYPOINT [ "node", "dist/main.js" ]
+EXPOSE ${PORT} 
