@@ -70,6 +70,8 @@ export class HandleFiles {
 
       const errorFiles = stringDecode.write(dataBuffer)
 
+      console.log({ errorFiles })
+
       return JSON.parse(errorFiles)
     } catch (error: unknown) {
       if (error instanceof Error) console.error('[Error Files] ', error.message)
