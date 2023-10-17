@@ -1,13 +1,13 @@
 import { useMutation } from '@tanstack/react-query'
 import { FormEvent, useMemo, useState } from 'react'
-import { FiTerminal } from 'react-icons/fi'
-import { RxCheck, RxCross1, RxReload } from 'react-icons/rx'
 import { CgDanger } from 'react-icons/cg'
-import { toast, ToastContainer } from 'react-toastify'
+import { FiTerminal } from 'react-icons/fi'
+import { RxCheck, RxCross1 } from 'react-icons/rx'
+import { ToastContainer, toast } from 'react-toastify'
 import Card from './components/Card'
+import Loader from './components/Loader'
 import ResultCard from './components/ResultCard'
 import { cleanFileMutation, filterCVMutation } from './services/mutation'
-import Loader from './components/Loader'
 
 export type Result = { tag: string; no_of_match: number }
 export type ResumeType = {

@@ -4,7 +4,7 @@ import {
   NotFoundException
 } from '@nestjs/common'
 import { PromisePool } from '@supercharge/promise-pool'
-import { unlink } from 'node:fs/promises'
+import { cpus } from 'node:os'
 import { config } from 'src/common/env.config'
 import { HandleFiles } from 'src/utils/handleFiles'
 import { HandlePDF } from 'src/utils/handlePDF'
@@ -142,10 +142,14 @@ export class CvHandlerService {
   }
 
   private async handleNewPDFs(newFiles: string[], savedDatas: SavedCV[]) {
+    const cpuCores = cpus().length
+    const TASK_TIMEOUT = 450_000
+    const concurrency = cpuCores && cpuCores <= 8 ? 7 : cpuCores - 1
+
     const storedFiles = !!savedDatas?.length ? [...savedDatas] : []
     await PromisePool.for(newFiles)
-      .withConcurrency(10)
-      .withTaskTimeout(300_000)
+      .withConcurrency(concurrency)
+      .withTaskTimeout(TASK_TIMEOUT)
       .onTaskStarted((file) => {
         console.log(`[${new Date().toISOString()}]: ${file}`)
       })
