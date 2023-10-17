@@ -1,7 +1,0 @@
-dist
-node_modules
-.env
-Dockerfile
-Dockerfile.prod
-uploads
-fetchedData.txt
