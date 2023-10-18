@@ -1,17 +1,32 @@
 {
-  "name": "cv-filtering",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "type": "module",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "openai": "^4.12.3",
-    "pdfreader": "^3.0.2"
-  }
+	"name": "cv-filtering",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"type": "module",
+	"scripts": {
+		"lint": "eslint .",
+		"format": "prettier --write .",
+		"prepare": "husky install"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"devDependencies": {
+		"@commitlint/cli": "^17.8.0",
+		"@commitlint/config-conventional": "^17.8.0",
+		"@typescript-eslint/eslint-plugin": "^6.8.0",
+		"@typescript-eslint/parser": "^6.8.0",
+		"eslint": "^8.51.0",
+		"eslint-config-prettier": "^9.0.0",
+		"eslint-plugin-prettier": "^5.0.1",
+		"husky": "^8.0.3",
+		"lint-staged": "^15.0.1"
+	},
+	"lint-staged": {
+		"**/*.{js,ts,tsx}": [
+			"eslint --fix"
+		],
+		"**/*": "prettier --write --ignore-unknown"
+	}
 }
